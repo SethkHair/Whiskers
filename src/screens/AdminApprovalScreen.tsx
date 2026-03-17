@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { Whisky } from '../types';
@@ -15,6 +14,7 @@ export default function AdminApprovalScreen() {
   const [whiskies, setWhiskies] = useState<Whisky[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   async function load() {
     const { data } = await supabase
@@ -35,18 +35,12 @@ export default function AdminApprovalScreen() {
     setActing(null);
   }
 
-  async function reject(id: string, name: string) {
-    Alert.alert(`Reject "${name}"?`, 'This will permanently delete the submission.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive', onPress: async () => {
-          setActing(id);
-          await supabase.from('whiskies').delete().eq('id', id);
-          setWhiskies(w => w.filter(x => x.id !== id));
-          setActing(null);
-        },
-      },
-    ]);
+  async function confirmReject(id: string) {
+    setActing(id);
+    await supabase.from('whiskies').delete().eq('id', id);
+    setWhiskies(w => w.filter(x => x.id !== id));
+    setActing(null);
+    setConfirmDelete(null);
   }
 
   if (loading) {
@@ -70,25 +64,41 @@ export default function AdminApprovalScreen() {
               {item.abv && <Text style={styles.tag}>{item.abv}% ABV</Text>}
             </View>
             {item.description && <Text style={styles.description}>{item.description}</Text>}
-            <View style={styles.actions}>
-              <TouchableOpacity
-                style={styles.approveBtn}
-                onPress={() => approve(item.id)}
-                disabled={acting === item.id}
-              >
-                {acting === item.id
-                  ? <ActivityIndicator color="#fff" size="small" />
-                  : <Text style={styles.approveBtnText}>✓ Approve</Text>
-                }
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.rejectBtn}
-                onPress={() => reject(item.id, item.name)}
-                disabled={acting === item.id}
-              >
-                <Text style={styles.rejectBtnText}>✕ Reject</Text>
-              </TouchableOpacity>
-            </View>
+            {confirmDelete === item.id ? (
+              <View style={styles.confirmRow}>
+                <Text style={styles.confirmText}>Delete this submission?</Text>
+                <View style={styles.actions}>
+                  <TouchableOpacity style={styles.rejectBtn} onPress={() => setConfirmDelete(null)}>
+                    <Text style={styles.rejectBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.deleteBtn} onPress={() => confirmReject(item.id)} disabled={acting === item.id}>
+                    {acting === item.id
+                      ? <ActivityIndicator color="#fff" size="small" />
+                      : <Text style={styles.deleteBtnText}>Delete</Text>
+                    }
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.actions}>
+                <TouchableOpacity
+                  style={styles.approveBtn}
+                  onPress={() => approve(item.id)}
+                  disabled={acting === item.id}
+                >
+                  {acting === item.id
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={styles.approveBtnText}>✓ Approve</Text>
+                  }
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.rejectBtn}
+                  onPress={() => setConfirmDelete(item.id)}
+                >
+                  <Text style={styles.rejectBtnText}>✕ Reject</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
       />
@@ -111,4 +121,8 @@ const styles = StyleSheet.create({
   approveBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   rejectBtn: { flex: 1, borderRadius: 8, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: '#374151' },
   rejectBtnText: { color: '#9ca3af', fontWeight: '600', fontSize: 14 },
+  confirmRow: { marginTop: 4 },
+  confirmText: { color: '#f87171', fontSize: 13, marginBottom: 8 },
+  deleteBtn: { flex: 1, backgroundColor: '#dc2626', borderRadius: 8, paddingVertical: 10, alignItems: 'center' },
+  deleteBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });
