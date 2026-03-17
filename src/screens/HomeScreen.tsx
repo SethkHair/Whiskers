@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
-import { Checkin, RootStackParamList } from '../types';
+import { Checkin, Whisky, RootStackParamList } from '../types';
 import { timeAgo } from '../lib/utils';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -21,6 +22,7 @@ const RATING_LABELS: Record<number, string> = {
 };
 
 type LikeInfo = { count: number; liked: boolean };
+type TrendingItem = { whisky: Whisky; count: number };
 
 export default function HomeScreen() {
   const navigation = useNavigation<Nav>();
@@ -28,10 +30,36 @@ export default function HomeScreen() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [likesMap, setLikesMap] = useState<Record<string, LikeInfo>>({});
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const [trending, setTrending] = useState<TrendingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [followingOnly, setFollowingOnly] = useState(false);
   const [error, setError] = useState(false);
+
+  async function fetchTrending() {
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data } = await supabase
+      .from('checkins')
+      .select('whisky_id, whisky:whiskies(id, name, distillery, type)')
+      .gte('created_at', weekAgo)
+      .not('whisky_id', 'is', null);
+
+    if (!data || data.length === 0) return;
+
+    const counts: Record<string, { count: number; whisky: Whisky }> = {};
+    for (const row of data) {
+      if (!row.whisky_id || !row.whisky) continue;
+      if (!counts[row.whisky_id]) {
+        counts[row.whisky_id] = { count: 0, whisky: row.whisky as unknown as Whisky };
+      }
+      counts[row.whisky_id].count++;
+    }
+
+    const sorted = Object.values(counts)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 7);
+    setTrending(sorted);
+  }
 
   async function fetchCheckins() {
     setError(false);
@@ -89,12 +117,12 @@ export default function HomeScreen() {
   }
 
   useEffect(() => {
-    fetchCheckins().finally(() => setLoading(false));
+    Promise.all([fetchCheckins(), fetchTrending()]).finally(() => setLoading(false));
   }, []);
 
   async function onRefresh() {
     setRefreshing(true);
-    await fetchCheckins();
+    await Promise.all([fetchCheckins(), fetchTrending()]);
     setRefreshing(false);
   }
 
@@ -144,6 +172,24 @@ export default function HomeScreen() {
         data={checkins}
         keyExtractor={item => item.id}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#b45309" />}
+        ListHeaderComponent={trending.length > 0 ? (
+          <View style={styles.trendingSection}>
+            <Text style={styles.trendingTitle}>🔥 Trending this week</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trendingRow}>
+              {trending.map(({ whisky, count }) => (
+                <TouchableOpacity
+                  key={whisky.id}
+                  style={styles.trendingCard}
+                  onPress={() => navigation.navigate('WhiskyDetail', { whiskyId: whisky.id })}
+                >
+                  <Text style={styles.trendingName} numberOfLines={2}>{whisky.name}</Text>
+                  <Text style={styles.trendingDistillery} numberOfLines={1}>{whisky.distillery}</Text>
+                  <Text style={styles.trendingCount}>{count} dram{count !== 1 ? 's' : ''}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
         ListEmptyComponent={
           <Text style={styles.empty}>
             {followingOnly ? 'No activity from people you follow yet.' : 'No check-ins yet. Be the first!'}
@@ -223,4 +269,18 @@ const styles = StyleSheet.create({
   actionIcon: { fontSize: 16 },
   actionIconActive: { opacity: 1 },
   actionCount: { color: '#9ca3af', fontSize: 13 },
+  trendingSection: { paddingBottom: 4 },
+  trendingTitle: { color: '#6b7280', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, paddingHorizontal: 16, paddingBottom: 10 },
+  trendingRow: { paddingHorizontal: 16, gap: 10, paddingBottom: 12 },
+  trendingCard: {
+    backgroundColor: '#1f2937',
+    borderRadius: 12,
+    padding: 12,
+    width: 130,
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  trendingName: { color: '#f9fafb', fontSize: 13, fontWeight: '700', marginBottom: 3, lineHeight: 17 },
+  trendingDistillery: { color: '#9ca3af', fontSize: 11, marginBottom: 6 },
+  trendingCount: { color: '#b45309', fontSize: 11, fontWeight: '600' },
 });

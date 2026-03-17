@@ -10,6 +10,24 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
 import { Whisky, Checkin, RootStackParamList } from '../types';
+
+const STOP_WORDS = new Set(['with', 'hint', 'hints', 'notes', 'note', 'touch', 'slight', 'some', 'very', 'nice', 'good', 'great', 'little', 'light', 'rich', 'long', 'finish', 'palate', 'nose', 'this', 'that', 'from', 'have', 'been', 'more', 'also']);
+
+function topWords(texts: (string | null)[], n = 5): string[] {
+  const counts: Record<string, number> = {};
+  for (const t of texts) {
+    if (!t) continue;
+    for (const word of t.toLowerCase().split(/[\s,;.!?()]+/)) {
+      if (word.length > 3 && !STOP_WORDS.has(word)) {
+        counts[word] = (counts[word] ?? 0) + 1;
+      }
+    }
+  }
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(([w]) => w);
+}
 import { timeAgo } from '../lib/utils';
 import CollectionButton from '../components/CollectionButton';
 
@@ -87,6 +105,43 @@ export default function WhiskyDetailScreen({ route, navigation }: Props) {
         <Text style={styles.logBtnText}>🥃 Log a Dram</Text>
       </TouchableOpacity>
 
+      {checkins.length >= 3 && (() => {
+        const noseWords = topWords(checkins.map(c => c.nose));
+        const palateWords = topWords(checkins.map(c => c.palate));
+        const finishWords = topWords(checkins.map(c => c.finish));
+        const hasAny = noseWords.length > 0 || palateWords.length > 0 || finishWords.length > 0;
+        if (!hasAny) return null;
+        return (
+          <View style={styles.notesCard}>
+            <Text style={styles.sectionTitle}>Community tasting notes</Text>
+            {noseWords.length > 0 && (
+              <View style={styles.notesRow}>
+                <Text style={styles.notesCategory}>Nose</Text>
+                <View style={styles.notesTags}>
+                  {noseWords.map(w => <Text key={w} style={styles.notesTag}>{w}</Text>)}
+                </View>
+              </View>
+            )}
+            {palateWords.length > 0 && (
+              <View style={styles.notesRow}>
+                <Text style={styles.notesCategory}>Palate</Text>
+                <View style={styles.notesTags}>
+                  {palateWords.map(w => <Text key={w} style={styles.notesTag}>{w}</Text>)}
+                </View>
+              </View>
+            )}
+            {finishWords.length > 0 && (
+              <View style={styles.notesRow}>
+                <Text style={styles.notesCategory}>Finish</Text>
+                <View style={styles.notesTags}>
+                  {finishWords.map(w => <Text key={w} style={styles.notesTag}>{w}</Text>)}
+                </View>
+              </View>
+            )}
+          </View>
+        );
+      })()}
+
       {checkins.length > 0 && (
         <>
           <Text style={styles.sectionTitle}>Recent check-ins</Text>
@@ -137,4 +192,9 @@ const styles = StyleSheet.create({
   checkinRating: { color: '#f59e0b', fontSize: 12 },
   checkinNotes: { color: '#d1d5db', fontSize: 14, lineHeight: 20, marginBottom: 6 },
   checkinDate: { color: '#6b7280', fontSize: 12 },
+  notesCard: { backgroundColor: '#1f2937', borderRadius: 12, padding: 14, marginBottom: 24, borderWidth: 1, borderColor: '#374151' },
+  notesRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8, gap: 8 },
+  notesCategory: { color: '#6b7280', fontSize: 12, fontWeight: '600', width: 48, paddingTop: 4 },
+  notesTags: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  notesTag: { backgroundColor: '#374151', color: '#d1d5db', fontSize: 12, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, textTransform: 'capitalize' },
 });

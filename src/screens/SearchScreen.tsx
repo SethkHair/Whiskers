@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,29 +7,42 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Fuse from 'fuse.js';
 import { supabase } from '../lib/supabase';
-import { Whisky, Profile, RootStackParamList } from '../types';
+import { Whisky, Profile, WhiskyType, RootStackParamList } from '../types';
+import { WHISKY_REGIONS, WHISKY_COUNTRIES } from '../constants/badges';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Tab = 'whiskies' | 'people';
+
+const WHISKY_TYPES: { value: WhiskyType; label: string }[] = [
+  { value: 'single_malt', label: 'Single Malt' },
+  { value: 'blended', label: 'Blended' },
+  { value: 'bourbon', label: 'Bourbon' },
+  { value: 'rye', label: 'Rye' },
+  { value: 'irish', label: 'Irish' },
+  { value: 'japanese', label: 'Japanese' },
+  { value: 'other', label: 'Other' },
+];
 
 export default function SearchScreen() {
   const navigation = useNavigation<Nav>();
   const [tab, setTab] = useState<Tab>('whiskies');
   const [query, setQuery] = useState('');
 
-  // Whiskies
   const [whiskies, setWhiskies] = useState<Whisky[]>([]);
-  const [whiskyResults, setWhiskyResults] = useState<Whisky[]>([]);
   const [whiskyFuse, setWhiskyFuse] = useState<Fuse<Whisky> | null>(null);
 
-  // People
+  const [filterType, setFilterType] = useState<WhiskyType | null>(null);
+  const [filterCountry, setFilterCountry] = useState<string | null>(null);
+  const [filterRegion, setFilterRegion] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+
   const [people, setPeople] = useState<Profile[]>([]);
-  const [peopleResults, setPeopleResults] = useState<Profile[]>([]);
   const [peopleFuse, setPeopleFuse] = useState<Fuse<Profile> | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -41,34 +54,44 @@ export default function SearchScreen() {
     ]).then(([{ data: w }, { data: p }]) => {
       if (w) {
         setWhiskies(w as Whisky[]);
-        setWhiskyResults(w as Whisky[]);
         setWhiskyFuse(new Fuse(w as Whisky[], { keys: ['name', 'distillery', 'region', 'country'], threshold: 0.35 }));
       }
       if (p) {
         setPeople(p as Profile[]);
-        setPeopleResults(p as Profile[]);
         setPeopleFuse(new Fuse(p as Profile[], { keys: ['username', 'bio'], threshold: 0.35 }));
       }
       setLoading(false);
     });
   }, []);
 
-  const handleSearch = useCallback((text: string) => {
-    setQuery(text);
-    if (!text.trim()) {
-      setWhiskyResults(whiskies);
-      setPeopleResults(people);
-    } else {
-      if (whiskyFuse) setWhiskyResults(whiskyFuse.search(text).map(r => r.item));
-      if (peopleFuse) setPeopleResults(peopleFuse.search(text).map(r => r.item));
-    }
-  }, [whiskyFuse, peopleFuse, whiskies, people]);
+  const displayedWhiskies = useMemo(() => {
+    let results = query.trim()
+      ? (whiskyFuse ? whiskyFuse.search(query).map(r => r.item) : whiskies)
+      : whiskies;
+    if (filterType) results = results.filter(w => w.type === filterType);
+    if (filterCountry) results = results.filter(w => w.country === filterCountry);
+    if (filterRegion) results = results.filter(w => w.region === filterRegion);
+    return results;
+  }, [query, whiskies, whiskyFuse, filterType, filterCountry, filterRegion]);
+
+  const displayedPeople = useMemo(() => {
+    if (!query.trim()) return people;
+    return peopleFuse ? peopleFuse.search(query).map(r => r.item) : people;
+  }, [query, people, peopleFuse]);
+
+  const activeFilterCount = [filterType, filterCountry, filterRegion].filter(Boolean).length;
+
+  function clearFilters() {
+    setFilterType(null);
+    setFilterCountry(null);
+    setFilterRegion(null);
+  }
 
   function switchTab(t: Tab) {
     setTab(t);
     setQuery('');
-    setWhiskyResults(whiskies);
-    setPeopleResults(people);
+    clearFilters();
+    setShowFilters(false);
   }
 
   return (
@@ -84,66 +107,131 @@ export default function SearchScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.searchBar}>
+      <View style={styles.searchRow}>
         <TextInput
           style={styles.input}
           placeholder={tab === 'whiskies' ? 'Whisky, distillery, region...' : 'Search by username...'}
           placeholderTextColor="#6b7280"
           value={query}
-          onChangeText={handleSearch}
+          onChangeText={setQuery}
           autoCapitalize="none"
         />
+        {tab === 'whiskies' && (
+          <TouchableOpacity
+            style={[styles.filterBtn, activeFilterCount > 0 && styles.filterBtnActive]}
+            onPress={() => setShowFilters(!showFilters)}
+          >
+            <Text style={[styles.filterBtnText, activeFilterCount > 0 && styles.filterBtnTextActive]}>
+              {activeFilterCount > 0 ? `Filters (${activeFilterCount})` : 'Filter'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {loading
-        ? <View style={styles.center}><ActivityIndicator color="#b45309" /></View>
-        : tab === 'whiskies'
-          ? (
-            <FlatList
-              data={whiskyResults}
-              keyExtractor={item => item.id}
-              ListEmptyComponent={<Text style={styles.empty}>No whiskies found</Text>}
-              renderItem={({ item }) => (
+      {tab === 'whiskies' && showFilters && (
+        <View style={styles.filterPanel}>
+          <View style={styles.filterRow}>
+            <Text style={styles.filterLabel}>Type</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+              {WHISKY_TYPES.map(t => (
                 <TouchableOpacity
-                  style={styles.row}
-                  onPress={() => navigation.navigate('WhiskyDetail', { whiskyId: item.id })}
+                  key={t.value}
+                  style={[styles.chip, filterType === t.value && styles.chipActive]}
+                  onPress={() => setFilterType(filterType === t.value ? null : t.value)}
                 >
-                  <View style={styles.rowMain}>
-                    <Text style={styles.name}>{item.name}</Text>
-                    <TouchableOpacity onPress={() => navigation.navigate('Distillery', { distillery: item.distillery })}>
-                      <Text style={styles.meta}>{item.distillery} · {item.country}</Text>
-                    </TouchableOpacity>
-                    {item.region && <Text style={styles.region}>{item.region}</Text>}
-                  </View>
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{item.type.replace('_', ' ')}</Text>
-                  </View>
+                  <Text style={[styles.chipText, filterType === t.value && styles.chipTextActive]}>{t.label}</Text>
                 </TouchableOpacity>
-              )}
-            />
-          )
-          : (
-            <FlatList
-              data={peopleResults}
-              keyExtractor={item => item.id}
-              ListEmptyComponent={<Text style={styles.empty}>No users found</Text>}
-              renderItem={({ item }) => (
+              ))}
+            </ScrollView>
+          </View>
+
+          <View style={styles.filterRow}>
+            <Text style={styles.filterLabel}>Country</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+              {WHISKY_COUNTRIES.map(c => (
                 <TouchableOpacity
-                  style={styles.row}
-                  onPress={() => navigation.navigate('UserProfile', { userId: item.id })}
+                  key={c}
+                  style={[styles.chip, filterCountry === c && styles.chipActive]}
+                  onPress={() => setFilterCountry(filterCountry === c ? null : c)}
                 >
-                  <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{item.username[0].toUpperCase()}</Text>
-                  </View>
-                  <View style={styles.rowMain}>
-                    <Text style={styles.name}>@{item.username}</Text>
-                    {item.bio && <Text style={styles.meta}>{item.bio}</Text>}
-                  </View>
+                  <Text style={[styles.chipText, filterCountry === c && styles.chipTextActive]}>{c}</Text>
                 </TouchableOpacity>
-              )}
-            />
-          )
-      }
+              ))}
+            </ScrollView>
+          </View>
+
+          <View style={styles.filterRow}>
+            <Text style={styles.filterLabel}>Region</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+              {WHISKY_REGIONS.map(r => (
+                <TouchableOpacity
+                  key={r}
+                  style={[styles.chip, filterRegion === r && styles.chipActive]}
+                  onPress={() => setFilterRegion(filterRegion === r ? null : r)}
+                >
+                  <Text style={[styles.chipText, filterRegion === r && styles.chipTextActive]}>{r}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {activeFilterCount > 0 && (
+            <TouchableOpacity style={styles.clearBtn} onPress={clearFilters}>
+              <Text style={styles.clearBtnText}>Clear all filters</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {loading ? (
+        <View style={styles.center}><ActivityIndicator color="#b45309" /></View>
+      ) : tab === 'whiskies' ? (
+        <FlatList
+          data={displayedWhiskies}
+          keyExtractor={item => item.id}
+          ListEmptyComponent={<Text style={styles.empty}>No whiskies found</Text>}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.row}
+              onPress={() => navigation.navigate('WhiskyDetail', { whiskyId: item.id })}
+            >
+              <View style={styles.rowMain}>
+                <Text style={styles.name}>{item.name}</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('Distillery', {
+                  distillery: item.distillery,
+                  distilleryId: item.distillery_id ?? undefined,
+                })}>
+                  <Text style={styles.meta}>{item.distillery} · {item.country}</Text>
+                </TouchableOpacity>
+                {item.region ? <Text style={styles.region}>{item.region}</Text> : null}
+              </View>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{item.type.replace('_', ' ')}</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+      ) : (
+        <FlatList
+          data={displayedPeople}
+          keyExtractor={item => item.id}
+          ListEmptyComponent={<Text style={styles.empty}>No users found</Text>}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.row}
+              onPress={() => navigation.navigate('UserProfile', { userId: item.id })}
+            >
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{item.username[0].toUpperCase()}</Text>
+              </View>
+              <View style={styles.rowMain}>
+                <Text style={styles.name}>@{item.username}</Text>
+                {item.bio ? <Text style={styles.meta}>{item.bio}</Text> : null}
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+      )}
 
       {tab === 'whiskies' && (
         <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('SubmitWhisky')}>
@@ -163,8 +251,9 @@ const styles = StyleSheet.create({
   tabBtnActive: { backgroundColor: '#b45309' },
   tabText: { color: '#6b7280', fontWeight: '600', fontSize: 14 },
   tabTextActive: { color: '#fff' },
-  searchBar: { paddingHorizontal: 16, marginBottom: 8 },
+  searchRow: { flexDirection: 'row', paddingHorizontal: 16, marginBottom: 8, gap: 8 },
   input: {
+    flex: 1,
     backgroundColor: '#1f2937',
     color: '#f9fafb',
     borderRadius: 12,
@@ -174,6 +263,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#374151',
   },
+  filterBtn: { justifyContent: 'center', paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: '#374151', backgroundColor: '#1f2937' },
+  filterBtnActive: { borderColor: '#b45309' },
+  filterBtnText: { color: '#6b7280', fontSize: 13, fontWeight: '600' },
+  filterBtnTextActive: { color: '#b45309' },
+  filterPanel: { marginHorizontal: 16, marginBottom: 8, backgroundColor: '#1f2937', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#374151' },
+  filterRow: { marginBottom: 10 },
+  filterLabel: { color: '#6b7280', fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
+  chipRow: { gap: 6 },
+  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: '#374151', backgroundColor: '#111827' },
+  chipActive: { backgroundColor: '#b45309', borderColor: '#b45309' },
+  chipText: { color: '#9ca3af', fontSize: 12 },
+  chipTextActive: { color: '#fff', fontWeight: '600' },
+  clearBtn: { marginTop: 4, alignItems: 'center' },
+  clearBtnText: { color: '#b45309', fontSize: 13, fontWeight: '600' },
   empty: { color: '#6b7280', textAlign: 'center', marginTop: 60 },
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#1f2937' },
   rowMain: { flex: 1 },
