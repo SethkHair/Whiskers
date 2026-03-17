@@ -52,11 +52,11 @@ const whiskies = [
   },
 ];
 
-const { data, error } = await supabase.from('whiskies').insert(whiskies).select();
+const { data, error } = await supabase.from('whiskies').select('name, distillery, status');
 
 if (error) {
   console.error('Error:', error.message);
 } else {
-  console.log(`Inserted ${data.length} whiskies:`);
-  data.forEach(w => console.log(` ✓ ${w.name}`));
+  console.log(`Found ${data.length} whiskies:`);
+  data.forEach(w => console.log(` ✓ ${w.name} (${w.status})`));
 }
