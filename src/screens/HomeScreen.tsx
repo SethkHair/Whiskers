@@ -12,6 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
 import { Checkin, RootStackParamList } from '../types';
+import { timeAgo } from '../lib/utils';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -25,6 +26,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [followingOnly, setFollowingOnly] = useState(false);
+  const [error, setError] = useState(false);
 
   async function fetchCheckins() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -50,7 +52,8 @@ export default function HomeScreen() {
       }
     }
 
-    const { data } = await query;
+    const { data, error: fetchError } = await query;
+    if (fetchError) { setError(true); return; }
     if (data) setCheckins(data as Checkin[]);
   }
 
@@ -64,9 +67,15 @@ export default function HomeScreen() {
     setRefreshing(false);
   }
 
-  if (loading) {
-    return <View style={styles.center}><ActivityIndicator color="#b45309" size="large" /></View>;
-  }
+  if (loading) return <View style={styles.center}><ActivityIndicator color="#b45309" size="large" /></View>;
+  if (error) return (
+    <View style={styles.center}>
+      <Text style={styles.errorText}>Couldn't load feed</Text>
+      <TouchableOpacity onPress={() => { setError(false); setLoading(true); fetchCheckins().finally(() => setLoading(false)); }}>
+        <Text style={styles.retryText}>Tap to retry</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
@@ -96,7 +105,7 @@ export default function HomeScreen() {
               <Text style={styles.distillery}>{item.whisky.distillery} · {item.whisky.country}</Text>
             )}
             {item.overall_notes && <Text style={styles.notes}>{item.overall_notes}</Text>}
-            <Text style={styles.date}>{new Date(item.created_at).toLocaleDateString()}</Text>
+            <Text style={styles.date}>{timeAgo(item.created_at)}</Text>
           </TouchableOpacity>
         )}
       />
@@ -109,6 +118,8 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#111827' },
   header: { fontSize: 24, fontWeight: '700', color: '#f9fafb', paddingHorizontal: 16, paddingTop: 56, paddingBottom: 12 },
   empty: { color: '#6b7280', textAlign: 'center', marginTop: 60, fontSize: 15 },
+  errorText: { color: '#f87171', fontSize: 16, marginBottom: 12 },
+  retryText: { color: '#b45309', fontSize: 15, fontWeight: '600' },
   card: {
     backgroundColor: '#1f2937',
     marginHorizontal: 16,

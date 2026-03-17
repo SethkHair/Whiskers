@@ -10,6 +10,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
 import { Whisky, Checkin, RootStackParamList } from '../types';
+import { timeAgo } from '../lib/utils';
 import CollectionButton from '../components/CollectionButton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WhiskyDetail'>;
@@ -93,7 +94,7 @@ export default function WhiskyDetailScreen({ route, navigation }: Props) {
                 <Text style={styles.checkinRating}>{'★'.repeat(c.rating)}{'☆'.repeat(5 - c.rating)}</Text>
               </View>
               {c.overall_notes && <Text style={styles.checkinNotes}>{c.overall_notes}</Text>}
-              <Text style={styles.checkinDate}>{new Date(c.created_at).toLocaleDateString()}</Text>
+              <Text style={styles.checkinDate}>{timeAgo(c.created_at)}</Text>
             </View>
           ))}
         </>

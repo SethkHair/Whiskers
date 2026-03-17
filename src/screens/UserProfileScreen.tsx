@@ -75,7 +75,7 @@ export default function UserProfileScreen({ route, navigation }: Props) {
     return <View style={styles.center}><ActivityIndicator color="#b45309" size="large" /></View>;
   }
 
-  const isOwnProfile = currentUserId === userId;
+  const isOwnProfile = currentUserId === userId || !currentUserId;
 
   return (
     <View style={styles.container}>

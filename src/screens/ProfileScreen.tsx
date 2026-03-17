@@ -30,6 +30,7 @@ export default function ProfileScreen() {
   const [tab, setTab] = useState<ProfileTab>('drams');
   const [isAdmin, setIsAdmin] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -141,13 +142,27 @@ export default function ProfileScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.row}
-              onPress={() => navigation.navigate('WhiskyDetail', { whiskyId: item.whisky_id })}
+              onPress={() => confirmDeleteId === item.id ? setConfirmDeleteId(null) : navigation.navigate('WhiskyDetail', { whiskyId: item.whisky_id })}
+              onLongPress={() => setConfirmDeleteId(item.id)}
             >
               <View style={{ flex: 1 }}>
                 <Text style={styles.whiskyName}>{item.whisky?.name ?? item.whisky_id}</Text>
                 <Text style={styles.meta}>{item.whisky?.distillery} · {new Date(item.date).toLocaleDateString()}</Text>
               </View>
-              <Text style={styles.ratingText}>{'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}</Text>
+              {confirmDeleteId === item.id ? (
+                <TouchableOpacity
+                  style={styles.deleteBtn}
+                  onPress={async () => {
+                    await supabase.from('checkins').delete().eq('id', item.id);
+                    setCheckins(c => c.filter(x => x.id !== item.id));
+                    setConfirmDeleteId(null);
+                  }}
+                >
+                  <Text style={styles.deleteBtnText}>Delete</Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.ratingText}>{'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}</Text>
+              )}
             </TouchableOpacity>
           )}
         />
@@ -207,4 +222,6 @@ const styles = StyleSheet.create({
   whiskyName: { color: '#f9fafb', fontSize: 15, fontWeight: '600' },
   meta: { color: '#9ca3af', fontSize: 12, marginTop: 2 },
   ratingText: { color: '#f59e0b', fontSize: 13 },
+  deleteBtn: { backgroundColor: '#dc2626', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
+  deleteBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 });

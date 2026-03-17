@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,20 @@ export default function AuthScreen() {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const checkTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleUsernameChange(value: string) {
+    setUsername(value);
+    setUsernameStatus('idle');
+    if (checkTimeout.current) clearTimeout(checkTimeout.current);
+    if (!value.trim()) return;
+    setUsernameStatus('checking');
+    checkTimeout.current = setTimeout(async () => {
+      const { data } = await supabase.from('profiles').select('id').eq('username', value.trim()).maybeSingle();
+      setUsernameStatus(data ? 'taken' : 'available');
+    }, 500);
+  }
 
   async function handleSubmit() {
     setError(null);
@@ -27,11 +41,8 @@ export default function AuthScreen() {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setError(error.message);
     } else {
-      if (!username.trim()) {
-        setError('Username is required');
-        setLoading(false);
-        return;
-      }
+      if (!username.trim()) { setError('Username is required'); setLoading(false); return; }
+      if (usernameStatus === 'taken') { setError('Username is already taken'); setLoading(false); return; }
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -55,14 +66,19 @@ export default function AuthScreen() {
 
         <View style={styles.form}>
           {mode === 'signup' && (
-            <TextInput
-              style={styles.input}
-              placeholder="Username"
-              placeholderTextColor="#9ca3af"
-              autoCapitalize="none"
-              value={username}
-              onChangeText={setUsername}
-            />
+            <View style={styles.inputRow}>
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Username"
+                placeholderTextColor="#9ca3af"
+                autoCapitalize="none"
+                value={username}
+                onChangeText={handleUsernameChange}
+              />
+              {usernameStatus === 'checking' && <ActivityIndicator color="#b45309" style={{ marginLeft: 10 }} />}
+              {usernameStatus === 'available' && <Text style={styles.available}>✓</Text>}
+              {usernameStatus === 'taken' && <Text style={styles.taken}>✗</Text>}
+            </View>
           )}
           <TextInput
             style={styles.input}
@@ -138,4 +154,7 @@ const styles = StyleSheet.create({
   toggle: { marginTop: 20, alignItems: 'center' },
   toggleText: { color: '#9ca3af', fontSize: 14 },
   error: { color: '#f87171', fontSize: 14, marginBottom: 8 },
+  inputRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  available: { color: '#22c55e', fontSize: 18, marginLeft: 10 },
+  taken: { color: '#f87171', fontSize: 18, marginLeft: 10 },
 });

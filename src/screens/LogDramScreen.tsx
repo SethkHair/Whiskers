@@ -12,6 +12,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
 import { checkAndAwardBadges } from '../lib/checkBadges';
 import { RootStackParamList, ServingType } from '../types';
+import Toast from '../components/Toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LogDram'>;
 
@@ -25,8 +26,10 @@ export default function LogDramScreen({ route, navigation }: Props) {
   const [palate, setPalate] = useState('');
   const [finish, setFinish] = useState('');
   const [notes, setNotes] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   async function submit() {
     setError(null);
@@ -55,14 +58,20 @@ export default function LogDramScreen({ route, navigation }: Props) {
         palate: palate || null,
         finish: finish || null,
         overall_notes: notes || null,
-        date: new Date().toISOString().split('T')[0],
+        date,
       });
 
       if (insertError) {
         setError(insertError.message);
       } else {
-        await checkAndAwardBadges(user.id);
-        navigation.goBack();
+        const newBadges = await checkAndAwardBadges(user.id);
+        if (newBadges && newBadges.length > 0) {
+          setToast(`🏅 Badge unlocked: ${newBadges[0].name}!`);
+          setTimeout(() => navigation.goBack(), 2500);
+        } else {
+          setToast('Dram logged!');
+          setTimeout(() => navigation.goBack(), 1500);
+        }
       }
     } catch (e: any) {
       setError(e.message ?? 'Something went wrong');
@@ -111,7 +120,18 @@ export default function LogDramScreen({ route, navigation }: Props) {
       <Text style={styles.label}>Overall notes</Text>
       <TextInput style={[styles.input, styles.inputTall]} placeholder="Any other thoughts?" placeholderTextColor="#6b7280" value={notes} onChangeText={setNotes} multiline />
 
+      <Text style={styles.label}>Date</Text>
+      <TextInput
+        style={styles.input}
+        value={date}
+        onChangeText={setDate}
+        placeholder="YYYY-MM-DD"
+        placeholderTextColor="#6b7280"
+        maxLength={10}
+      />
+
       {error && <Text style={styles.error}>{error}</Text>}
+      {toast && <Toast message={toast} onDone={() => setToast(null)} />}
 
       <TouchableOpacity style={styles.submitBtn} onPress={submit} disabled={loading}>
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Log Dram</Text>}

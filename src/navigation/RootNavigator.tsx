@@ -1,3 +1,4 @@
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { useAuth } from '../hooks/useAuth';
@@ -12,11 +13,18 @@ import EditProfileScreen from '../screens/EditProfileScreen';
 import AdminApprovalScreen from '../screens/AdminApprovalScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+const styles = StyleSheet.create({
+  splash: { flex: 1, backgroundColor: '#111827', alignItems: 'center', justifyContent: 'center' },
+});
 
 export default function RootNavigator() {
   const { session, loading } = useAuth();
 
-  if (loading) return null;
+  if (loading) return (
+    <View style={styles.splash}>
+      <ActivityIndicator size="large" color="#b45309" />
+    </View>
+  );
 
   return (
     <Stack.Navigator>
