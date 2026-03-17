@@ -6,6 +6,7 @@ import MainTabs from './MainTabs';
 import WhiskyDetailScreen from '../screens/WhiskyDetailScreen';
 import LogDramScreen from '../screens/LogDramScreen';
 import SubmitWhiskyScreen from '../screens/SubmitWhiskyScreen';
+import UserProfileScreen from '../screens/UserProfileScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -22,6 +23,7 @@ export default function RootNavigator() {
           <Stack.Screen name="WhiskyDetail" component={WhiskyDetailScreen} options={{ title: 'Whisky' }} />
           <Stack.Screen name="LogDram" component={LogDramScreen} options={{ title: 'Log a Dram' }} />
           <Stack.Screen name="SubmitWhisky" component={SubmitWhiskyScreen} options={{ title: 'Submit Whisky' }} />
+          <Stack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: 'Profile' }} />
         </>
       ) : (
         <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />

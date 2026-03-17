@@ -68,12 +68,19 @@ export interface Collection {
   whisky?: Whisky;
 }
 
+export interface Follow {
+  follower_id: string;
+  following_id: string;
+  created_at: string;
+}
+
 export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
   WhiskyDetail: { whiskyId: string };
   LogDram: { whiskyId: string; whiskyName: string };
   SubmitWhisky: undefined;
+  UserProfile: { userId: string };
 };
 
 export type TabParamList = {

@@ -24,13 +24,33 @@ export default function HomeScreen() {
   const [checkins, setCheckins] = useState<Checkin[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [followingOnly, setFollowingOnly] = useState(false);
 
   async function fetchCheckins() {
-    const { data } = await supabase
+    const { data: { user } } = await supabase.auth.getUser();
+
+    let query = supabase
       .from('checkins')
       .select('*, whisky:whiskies(*), profile:profiles(*)')
       .order('created_at', { ascending: false })
       .limit(50);
+
+    if (user) {
+      const { data: follows } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', user.id);
+
+      if (follows && follows.length > 0) {
+        const ids = follows.map(f => f.following_id);
+        query = query.in('user_id', ids);
+        setFollowingOnly(true);
+      } else {
+        setFollowingOnly(false);
+      }
+    }
+
+    const { data } = await query;
     if (data) setCheckins(data as Checkin[]);
   }
 
@@ -50,19 +70,25 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Activity</Text>
+      <Text style={styles.header}>{followingOnly ? 'Following' : 'Activity'}</Text>
       <FlatList
         data={checkins}
         keyExtractor={item => item.id}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#b45309" />}
-        ListEmptyComponent={<Text style={styles.empty}>No check-ins yet. Be the first!</Text>}
+        ListEmptyComponent={
+          <Text style={styles.empty}>
+            {followingOnly ? 'No activity from people you follow yet.' : 'No check-ins yet. Be the first!'}
+          </Text>
+        }
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.card}
             onPress={() => item.whisky && navigation.navigate('WhiskyDetail', { whiskyId: item.whisky_id })}
           >
             <View style={styles.cardHeader}>
-              <Text style={styles.username}>@{item.profile?.username ?? 'unknown'}</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('UserProfile', { userId: item.user_id })}>
+                <Text style={styles.username}>@{item.profile?.username ?? 'unknown'}</Text>
+              </TouchableOpacity>
               <Text style={styles.rating}>{RATING_LABELS[item.rating] ?? item.rating}</Text>
             </View>
             <Text style={styles.whiskyName}>{item.whisky?.name ?? item.whisky_id}</Text>
