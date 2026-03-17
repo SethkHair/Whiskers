@@ -81,7 +81,7 @@ export default function CommentsScreen({ route, navigation }: Props) {
   if (loading) return <View style={styles.center}><ActivityIndicator color="#b45309" /></View>;
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <FlatList
         data={comments}
         keyExtractor={item => item.id}
