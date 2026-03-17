@@ -7,7 +7,6 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
@@ -26,31 +25,48 @@ export default function LogDramScreen({ route, navigation }: Props) {
   const [finish, setFinish] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function submit() {
+    setError(null);
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
 
-    const { error } = await supabase.from('checkins').insert({
-      user_id: user.id,
-      whisky_id: whiskyId,
-      rating,
-      serving_type: serving,
-      nose: nose || null,
-      palate: palate || null,
-      finish: finish || null,
-      overall_notes: notes || null,
-      date: new Date().toISOString().split('T')[0],
-    });
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        setError('Not signed in — please sign in again');
+        setLoading(false);
+        return;
+      }
+
+      // Ensure profile exists (handles accounts created before the trigger)
+      await supabase.from('profiles').upsert(
+        { id: user.id, username: user.email?.split('@')[0] ?? user.id.slice(0, 8) },
+        { onConflict: 'id', ignoreDuplicates: true }
+      );
+
+      const { error: insertError } = await supabase.from('checkins').insert({
+        user_id: user.id,
+        whisky_id: whiskyId,
+        rating,
+        serving_type: serving,
+        nose: nose || null,
+        palate: palate || null,
+        finish: finish || null,
+        overall_notes: notes || null,
+        date: new Date().toISOString().split('T')[0],
+      });
+
+      if (insertError) {
+        setError(insertError.message);
+      } else {
+        navigation.goBack();
+      }
+    } catch (e: any) {
+      setError(e.message ?? 'Something went wrong');
+    }
 
     setLoading(false);
-
-    if (error) {
-      Alert.alert('Error', error.message);
-    } else {
-      navigation.goBack();
-    }
   }
 
   return (
@@ -93,6 +109,8 @@ export default function LogDramScreen({ route, navigation }: Props) {
       <Text style={styles.label}>Overall notes</Text>
       <TextInput style={[styles.input, styles.inputTall]} placeholder="Any other thoughts?" placeholderTextColor="#6b7280" value={notes} onChangeText={setNotes} multiline />
 
+      {error && <Text style={styles.error}>{error}</Text>}
+
       <TouchableOpacity style={styles.submitBtn} onPress={submit} disabled={loading}>
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Log Dram</Text>}
       </TouchableOpacity>
@@ -125,6 +143,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   inputTall: { minHeight: 80 },
+  error: { color: '#f87171', fontSize: 14, marginBottom: 12, textAlign: 'center' },
   submitBtn: { backgroundColor: '#b45309', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
   submitText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });
