@@ -82,6 +82,8 @@ export type RootStackParamList = {
   SubmitWhisky: undefined;
   UserProfile: { userId: string };
   Distillery: { distillery: string };
+  EditProfile: undefined;
+  AdminApproval: undefined;
 };
 
 export type TabParamList = {

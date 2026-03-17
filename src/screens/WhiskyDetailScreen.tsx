@@ -10,6 +10,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
 import { Whisky, Checkin, RootStackParamList } from '../types';
+import CollectionButton from '../components/CollectionButton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WhiskyDetail'>;
 
@@ -72,6 +73,8 @@ export default function WhiskyDetailScreen({ route, navigation }: Props) {
       )}
 
       {whisky.description && <Text style={styles.description}>{whisky.description}</Text>}
+
+      <CollectionButton whiskyId={whisky.id} />
 
       <TouchableOpacity
         style={styles.logBtn}

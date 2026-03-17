@@ -7,18 +7,29 @@ import {
   ActivityIndicator,
   StyleSheet,
   Alert,
+  SectionList,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
-import { Checkin, Profile, RootStackParamList } from '../types';
+import { Checkin, Collection, Profile, RootStackParamList } from '../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
+type ProfileTab = 'drams' | 'collection';
+
+const COLLECTION_SECTIONS = [
+  { key: 'have', label: '🍾 Have' },
+  { key: 'want', label: '🤩 Want' },
+  { key: 'had',  label: '✅ Had' },
+];
 
 export default function ProfileScreen() {
   const navigation = useNavigation<Nav>();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [checkins, setCheckins] = useState<Checkin[]>([]);
+  const [collection, setCollection] = useState<Collection[]>([]);
+  const [tab, setTab] = useState<ProfileTab>('drams');
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,17 +37,15 @@ export default function ProfileScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const [{ data: prof }, { data: cks }] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', user.id).single(),
-        supabase
-          .from('checkins')
-          .select('*, whisky:whiskies(*)')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false }),
+      const [{ data: prof }, { data: cks }, { data: col }] = await Promise.all([
+        supabase.from('profiles').select('*, is_admin').eq('id', user.id).single(),
+        supabase.from('checkins').select('*, whisky:whiskies(*)').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('collection').select('*, whisky:whiskies(*)').eq('user_id', user.id),
       ]);
 
-      if (prof) setProfile(prof as Profile);
+      if (prof) { setProfile(prof as Profile); setIsAdmin(!!(prof as any).is_admin); }
       if (cks) setCheckins(cks as Checkin[]);
+      if (col) setCollection(col as Collection[]);
       setLoading(false);
     }
     load();
@@ -53,57 +62,108 @@ export default function ProfileScreen() {
     return <View style={styles.center}><ActivityIndicator color="#b45309" size="large" /></View>;
   }
 
+  const collectionSections = COLLECTION_SECTIONS.map(s => ({
+    title: s.label,
+    data: collection.filter(c => c.status === s.key),
+  })).filter(s => s.data.length > 0);
+
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.headerRow}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.username}>@{profile?.username ?? 'you'}</Text>
           {profile?.bio && <Text style={styles.bio}>{profile.bio}</Text>}
         </View>
-        <TouchableOpacity onPress={signOut} style={styles.signOutBtn}>
-          <Text style={styles.signOutText}>Sign out</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.editBtn}
+            onPress={() => navigation.navigate('EditProfile')}
+          >
+            <Text style={styles.editBtnText}>Edit</Text>
+          </TouchableOpacity>
+          {isAdmin && (
+            <TouchableOpacity style={styles.adminBtn} onPress={() => navigation.navigate('AdminApproval')}>
+              <Text style={styles.adminBtnText}>Admin</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={signOut} style={styles.signOutBtn}>
+            <Text style={styles.signOutText}>Sign out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
+      {/* Stats */}
       <View style={styles.stats}>
         <View style={styles.stat}>
           <Text style={styles.statNum}>{checkins.length}</Text>
           <Text style={styles.statLabel}>Drams</Text>
         </View>
         <View style={styles.stat}>
-          <Text style={styles.statNum}>
-            {new Set(checkins.map(c => c.whisky_id)).size}
-          </Text>
+          <Text style={styles.statNum}>{new Set(checkins.map(c => c.whisky_id)).size}</Text>
           <Text style={styles.statLabel}>Unique</Text>
         </View>
         <View style={styles.stat}>
+          <Text style={styles.statNum}>{collection.filter(c => c.status === 'have').length}</Text>
+          <Text style={styles.statLabel}>In cabinet</Text>
+        </View>
+        <View style={styles.stat}>
           <Text style={styles.statNum}>
-            {checkins.length
-              ? (checkins.reduce((s, c) => s + c.rating, 0) / checkins.length).toFixed(1)
-              : '—'}
+            {checkins.length ? (checkins.reduce((s, c) => s + c.rating, 0) / checkins.length).toFixed(1) : '—'}
           </Text>
-          <Text style={styles.statLabel}>Avg rating</Text>
+          <Text style={styles.statLabel}>Avg</Text>
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Recent drams</Text>
-      <FlatList
-        data={checkins}
-        keyExtractor={item => item.id}
-        ListEmptyComponent={<Text style={styles.empty}>No check-ins yet</Text>}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.row}
-            onPress={() => navigation.navigate('WhiskyDetail', { whiskyId: item.whisky_id })}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.whiskyName}>{item.whisky?.name ?? item.whisky_id}</Text>
-              <Text style={styles.meta}>{item.whisky?.distillery} · {new Date(item.date).toLocaleDateString()}</Text>
-            </View>
-            <Text style={styles.ratingText}>{'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}</Text>
-          </TouchableOpacity>
-        )}
-      />
+      {/* Tabs */}
+      <View style={styles.tabs}>
+        <TouchableOpacity style={[styles.tabBtn, tab === 'drams' && styles.tabBtnActive]} onPress={() => setTab('drams')}>
+          <Text style={[styles.tabText, tab === 'drams' && styles.tabTextActive]}>Drams</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.tabBtn, tab === 'collection' && styles.tabBtnActive]} onPress={() => setTab('collection')}>
+          <Text style={[styles.tabText, tab === 'collection' && styles.tabTextActive]}>Collection</Text>
+        </TouchableOpacity>
+      </View>
+
+      {tab === 'drams' ? (
+        <FlatList
+          data={checkins}
+          keyExtractor={item => item.id}
+          ListEmptyComponent={<Text style={styles.empty}>No check-ins yet</Text>}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.row}
+              onPress={() => navigation.navigate('WhiskyDetail', { whiskyId: item.whisky_id })}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.whiskyName}>{item.whisky?.name ?? item.whisky_id}</Text>
+                <Text style={styles.meta}>{item.whisky?.distillery} · {new Date(item.date).toLocaleDateString()}</Text>
+              </View>
+              <Text style={styles.ratingText}>{'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}</Text>
+            </TouchableOpacity>
+          )}
+        />
+      ) : (
+        <SectionList
+          sections={collectionSections}
+          keyExtractor={item => item.id}
+          ListEmptyComponent={<Text style={styles.empty}>Nothing in your collection yet{'\n'}Add whiskies from their detail page</Text>}
+          renderSectionHeader={({ section }) => (
+            <Text style={styles.sectionHeader}>{section.title}</Text>
+          )}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.row}
+              onPress={() => navigation.navigate('WhiskyDetail', { whiskyId: item.whisky_id })}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.whiskyName}>{item.whisky?.name ?? item.whisky_id}</Text>
+                <Text style={styles.meta}>{item.whisky?.distillery} · {item.whisky?.country}</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+      )}
     </View>
   );
 }
@@ -111,32 +171,28 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#111827' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#111827' },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: 16,
-    paddingTop: 56,
-    paddingBottom: 16,
-  },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 16, paddingTop: 56, paddingBottom: 16 },
   username: { fontSize: 22, fontWeight: '700', color: '#f9fafb' },
-  bio: { color: '#9ca3af', fontSize: 14, marginTop: 4, maxWidth: 220 },
+  bio: { color: '#9ca3af', fontSize: 14, marginTop: 4, maxWidth: 200 },
+  headerActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  editBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#b45309' },
+  editBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  adminBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#374151' },
+  adminBtnText: { color: '#f9fafb', fontSize: 13, fontWeight: '600' },
   signOutBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#374151' },
   signOutText: { color: '#9ca3af', fontSize: 13 },
-  stats: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 20, gap: 24 },
+  stats: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 16, gap: 20 },
   stat: { alignItems: 'center' },
-  statNum: { fontSize: 24, fontWeight: '700', color: '#f9fafb' },
-  statLabel: { fontSize: 12, color: '#6b7280', marginTop: 2 },
-  sectionTitle: { fontSize: 14, fontWeight: '600', color: '#6b7280', paddingHorizontal: 16, paddingBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
-  empty: { color: '#6b7280', textAlign: 'center', marginTop: 40 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f2937',
-  },
+  statNum: { fontSize: 22, fontWeight: '700', color: '#f9fafb' },
+  statLabel: { fontSize: 11, color: '#6b7280', marginTop: 2 },
+  tabs: { flexDirection: 'row', marginHorizontal: 16, marginBottom: 8, backgroundColor: '#1f2937', borderRadius: 10, padding: 4 },
+  tabBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
+  tabBtnActive: { backgroundColor: '#b45309' },
+  tabText: { color: '#6b7280', fontWeight: '600', fontSize: 14 },
+  tabTextActive: { color: '#fff' },
+  empty: { color: '#6b7280', textAlign: 'center', marginTop: 40, lineHeight: 22 },
+  sectionHeader: { fontSize: 13, fontWeight: '700', color: '#6b7280', paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#111827' },
+  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#1f2937' },
   whiskyName: { color: '#f9fafb', fontSize: 15, fontWeight: '600' },
   meta: { color: '#9ca3af', fontSize: 12, marginTop: 2 },
   ratingText: { color: '#f59e0b', fontSize: 13 },
