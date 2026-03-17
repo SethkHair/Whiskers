@@ -42,7 +42,7 @@ export default function HomeScreen() {
         .eq('follower_id', user.id);
 
       if (follows && follows.length > 0) {
-        const ids = follows.map(f => f.following_id);
+        const ids = [...follows.map(f => f.following_id), user.id];
         query = query.in('user_id', ids);
         setFollowingOnly(true);
       } else {
