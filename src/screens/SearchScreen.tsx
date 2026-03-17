@@ -110,7 +110,9 @@ export default function SearchScreen() {
                 >
                   <View style={styles.rowMain}>
                     <Text style={styles.name}>{item.name}</Text>
-                    <Text style={styles.meta}>{item.distillery} · {item.country}</Text>
+                    <TouchableOpacity onPress={() => navigation.navigate('Distillery', { distillery: item.distillery })}>
+                      <Text style={styles.meta}>{item.distillery} · {item.country}</Text>
+                    </TouchableOpacity>
                     {item.region && <Text style={styles.region}>{item.region}</Text>}
                   </View>
                   <View style={styles.badge}>

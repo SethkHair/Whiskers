@@ -7,6 +7,7 @@ import WhiskyDetailScreen from '../screens/WhiskyDetailScreen';
 import LogDramScreen from '../screens/LogDramScreen';
 import SubmitWhiskyScreen from '../screens/SubmitWhiskyScreen';
 import UserProfileScreen from '../screens/UserProfileScreen';
+import DistilleryScreen from '../screens/DistilleryScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -24,6 +25,7 @@ export default function RootNavigator() {
           <Stack.Screen name="LogDram" component={LogDramScreen} options={{ title: 'Log a Dram' }} />
           <Stack.Screen name="SubmitWhisky" component={SubmitWhiskyScreen} options={{ title: 'Submit Whisky' }} />
           <Stack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: 'Profile' }} />
+          <Stack.Screen name="Distillery" component={DistilleryScreen} options={({ route }) => ({ title: route.params.distillery })} />
         </>
       ) : (
         <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />

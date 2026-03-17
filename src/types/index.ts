@@ -81,6 +81,7 @@ export type RootStackParamList = {
   LogDram: { whiskyId: string; whiskyName: string };
   SubmitWhisky: undefined;
   UserProfile: { userId: string };
+  Distillery: { distillery: string };
 };
 
 export type TabParamList = {
