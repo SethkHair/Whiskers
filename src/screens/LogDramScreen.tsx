@@ -1,0 +1,130 @@
+import { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  StyleSheet,
+  Alert,
+} from 'react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { supabase } from '../lib/supabase';
+import { RootStackParamList, ServingType } from '../types';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'LogDram'>;
+
+const SERVING_OPTIONS: ServingType[] = ['neat', 'rocks', 'water', 'cocktail'];
+
+export default function LogDramScreen({ route, navigation }: Props) {
+  const { whiskyId, whiskyName } = route.params;
+  const [rating, setRating] = useState(3);
+  const [serving, setServing] = useState<ServingType>('neat');
+  const [nose, setNose] = useState('');
+  const [palate, setPalate] = useState('');
+  const [finish, setFinish] = useState('');
+  const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function submit() {
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setLoading(false); return; }
+
+    const { error } = await supabase.from('checkins').insert({
+      user_id: user.id,
+      whisky_id: whiskyId,
+      rating,
+      serving_type: serving,
+      nose: nose || null,
+      palate: palate || null,
+      finish: finish || null,
+      overall_notes: notes || null,
+      date: new Date().toISOString().split('T')[0],
+    });
+
+    setLoading(false);
+
+    if (error) {
+      Alert.alert('Error', error.message);
+    } else {
+      navigation.goBack();
+    }
+  }
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <Text style={styles.whiskyName}>{whiskyName}</Text>
+
+      <Text style={styles.label}>Rating</Text>
+      <View style={styles.stars}>
+        {[1, 2, 3, 4, 5].map(n => (
+          <TouchableOpacity key={n} onPress={() => setRating(n)}>
+            <Text style={[styles.star, n <= rating && styles.starFilled]}>{n <= rating ? '★' : '☆'}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={styles.label}>Serving</Text>
+      <View style={styles.servingRow}>
+        {SERVING_OPTIONS.map(s => (
+          <TouchableOpacity
+            key={s}
+            style={[styles.servingBtn, serving === s && styles.servingBtnActive]}
+            onPress={() => setServing(s)}
+          >
+            <Text style={[styles.servingText, serving === s && styles.servingTextActive]}>
+              {s.charAt(0).toUpperCase() + s.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={styles.label}>Nose</Text>
+      <TextInput style={styles.input} placeholder="What do you smell?" placeholderTextColor="#6b7280" value={nose} onChangeText={setNose} multiline />
+
+      <Text style={styles.label}>Palate</Text>
+      <TextInput style={styles.input} placeholder="What do you taste?" placeholderTextColor="#6b7280" value={palate} onChangeText={setPalate} multiline />
+
+      <Text style={styles.label}>Finish</Text>
+      <TextInput style={styles.input} placeholder="How does it end?" placeholderTextColor="#6b7280" value={finish} onChangeText={setFinish} multiline />
+
+      <Text style={styles.label}>Overall notes</Text>
+      <TextInput style={[styles.input, styles.inputTall]} placeholder="Any other thoughts?" placeholderTextColor="#6b7280" value={notes} onChangeText={setNotes} multiline />
+
+      <TouchableOpacity style={styles.submitBtn} onPress={submit} disabled={loading}>
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Log Dram</Text>}
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#111827' },
+  content: { padding: 20, paddingBottom: 48 },
+  whiskyName: { fontSize: 20, fontWeight: '700', color: '#f9fafb', marginBottom: 24 },
+  label: { fontSize: 13, fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  stars: { flexDirection: 'row', gap: 8, marginBottom: 24 },
+  star: { fontSize: 36, color: '#374151' },
+  starFilled: { color: '#f59e0b' },
+  servingRow: { flexDirection: 'row', gap: 8, marginBottom: 24 },
+  servingBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#374151' },
+  servingBtnActive: { backgroundColor: '#b45309', borderColor: '#b45309' },
+  servingText: { color: '#9ca3af', fontSize: 13 },
+  servingTextActive: { color: '#fff', fontWeight: '600' },
+  input: {
+    backgroundColor: '#1f2937',
+    color: '#f9fafb',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: '#374151',
+    marginBottom: 20,
+    minHeight: 48,
+  },
+  inputTall: { minHeight: 80 },
+  submitBtn: { backgroundColor: '#b45309', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
+  submitText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+});
