@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
+import { checkAndAwardBadges } from '../lib/checkBadges';
 import { RootStackParamList, ServingType } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LogDram'>;
@@ -60,6 +61,7 @@ export default function LogDramScreen({ route, navigation }: Props) {
       if (insertError) {
         setError(insertError.message);
       } else {
+        await checkAndAwardBadges(user.id);
         navigation.goBack();
       }
     } catch (e: any) {
