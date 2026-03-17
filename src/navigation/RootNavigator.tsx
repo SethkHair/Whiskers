@@ -11,6 +11,9 @@ import UserProfileScreen from '../screens/UserProfileScreen';
 import DistilleryScreen from '../screens/DistilleryScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import AdminApprovalScreen from '../screens/AdminApprovalScreen';
+import CommentsScreen from '../screens/CommentsScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
+import FollowListScreen from '../screens/FollowListScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const styles = StyleSheet.create({
@@ -38,6 +41,9 @@ export default function RootNavigator() {
           <Stack.Screen name="Distillery" component={DistilleryScreen} options={({ route }) => ({ title: route.params.distillery })} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Edit Profile' }} />
           <Stack.Screen name="AdminApproval" component={AdminApprovalScreen} options={{ title: 'Pending Whiskies' }} />
+          <Stack.Screen name="Comments" component={CommentsScreen} options={{ title: 'Comments' }} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="FollowList" component={FollowListScreen} options={{ title: '' }} />
         </>
       ) : (
         <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />

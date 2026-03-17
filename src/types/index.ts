@@ -2,6 +2,7 @@ export type WhiskyStatus = 'approved' | 'pending';
 export type WhiskyType = 'single_malt' | 'blended' | 'bourbon' | 'rye' | 'irish' | 'japanese' | 'other';
 export type ServingType = 'neat' | 'rocks' | 'water' | 'cocktail';
 export type CollectionStatus = 'have' | 'want' | 'had';
+export type NotificationType = 'follow' | 'like' | 'comment';
 
 export interface Profile {
   id: string;
@@ -74,6 +75,34 @@ export interface Follow {
   created_at: string;
 }
 
+export interface Like {
+  user_id: string;
+  checkin_id: string;
+  created_at: string;
+}
+
+export interface Comment {
+  id: string;
+  user_id: string;
+  checkin_id: string;
+  body: string;
+  created_at: string;
+  profile?: Profile;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  actor_id: string;
+  type: NotificationType;
+  checkin_id: string | null;
+  comment_id: string | null;
+  read: boolean;
+  created_at: string;
+  actor?: Profile;
+  checkin?: Checkin & { whisky?: Whisky };
+}
+
 export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
@@ -84,6 +113,9 @@ export type RootStackParamList = {
   Distillery: { distillery: string };
   EditProfile: undefined;
   AdminApproval: undefined;
+  Comments: { checkinId: string; checkinUserId: string };
+  Notifications: undefined;
+  FollowList: { userId: string; mode: 'followers' | 'following' };
 };
 
 export type TabParamList = {

@@ -24,9 +24,13 @@ const COLLECTION_SECTIONS = [
 
 export default function ProfileScreen() {
   const navigation = useNavigation<Nav>();
+  const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [checkins, setCheckins] = useState<Checkin[]>([]);
   const [collection, setCollection] = useState<Collection[]>([]);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [tab, setTab] = useState<ProfileTab>('drams');
   const [isAdmin, setIsAdmin] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
@@ -37,16 +41,30 @@ export default function ProfileScreen() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setUserId(user.id);
 
-      const [{ data: prof }, { data: cks }, { data: col }] = await Promise.all([
+      const [
+        { data: prof },
+        { data: cks },
+        { data: col },
+        { count: followers },
+        { count: following },
+        { count: unread },
+      ] = await Promise.all([
         supabase.from('profiles').select('*, is_admin').eq('id', user.id).single(),
         supabase.from('checkins').select('*, whisky:whiskies(*)').eq('user_id', user.id).order('created_at', { ascending: false }),
         supabase.from('collection').select('*, whisky:whiskies(*)').eq('user_id', user.id),
+        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', user.id),
+        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', user.id),
+        supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('read', false),
       ]);
 
       if (prof) { setProfile(prof as Profile); setIsAdmin(!!(prof as any).is_admin); }
       if (cks) setCheckins(cks as Checkin[]);
       if (col) setCollection(col as Collection[]);
+      setFollowerCount(followers ?? 0);
+      setFollowingCount(following ?? 0);
+      setUnreadCount(unread ?? 0);
       setLoading(false);
     }
     load();
@@ -71,9 +89,18 @@ export default function ProfileScreen() {
       <View style={styles.headerRow}>
         <View style={{ flex: 1 }}>
           <Text style={styles.username}>@{profile?.username ?? 'you'}</Text>
-          {profile?.bio && <Text style={styles.bio}>{profile.bio}</Text>}
+          {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
         </View>
         <View style={styles.headerActions}>
+          {/* Notifications bell */}
+          <TouchableOpacity style={styles.bellBtn} onPress={() => navigation.navigate('Notifications')}>
+            <Text style={styles.bellIcon}>🔔</Text>
+            {unreadCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.editBtn}
             onPress={() => navigation.navigate('EditProfile')}
@@ -112,10 +139,20 @@ export default function ProfileScreen() {
           <Text style={styles.statNum}>{new Set(checkins.map(c => c.whisky_id)).size}</Text>
           <Text style={styles.statLabel}>Unique</Text>
         </View>
-        <View style={styles.stat}>
-          <Text style={styles.statNum}>{collection.filter(c => c.status === 'have').length}</Text>
-          <Text style={styles.statLabel}>In cabinet</Text>
-        </View>
+        <TouchableOpacity
+          style={styles.stat}
+          onPress={() => userId && navigation.navigate('FollowList', { userId, mode: 'followers' })}
+        >
+          <Text style={styles.statNum}>{followerCount}</Text>
+          <Text style={styles.statLabel}>Followers</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.stat}
+          onPress={() => userId && navigation.navigate('FollowList', { userId, mode: 'following' })}
+        >
+          <Text style={styles.statNum}>{followingCount}</Text>
+          <Text style={styles.statLabel}>Following</Text>
+        </TouchableOpacity>
         <View style={styles.stat}>
           <Text style={styles.statNum}>
             {checkins.length ? (checkins.reduce((s, c) => s + c.rating, 0) / checkins.length).toFixed(1) : '—'}
@@ -194,10 +231,14 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#111827' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#111827' },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 16, paddingTop: 56, paddingBottom: 16 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 16, paddingTop: 56, paddingBottom: 12 },
   username: { fontSize: 22, fontWeight: '700', color: '#f9fafb' },
   bio: { color: '#9ca3af', fontSize: 14, marginTop: 4, maxWidth: 200 },
   headerActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  bellBtn: { position: 'relative', padding: 4 },
+  bellIcon: { fontSize: 20 },
+  badge: { position: 'absolute', top: 0, right: 0, backgroundColor: '#b45309', borderRadius: 8, minWidth: 16, paddingHorizontal: 3, alignItems: 'center' },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
   editBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#b45309' },
   editBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   adminBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#374151' },
@@ -207,9 +248,9 @@ const styles = StyleSheet.create({
   signOutConfirmText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   signOutBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#374151' },
   signOutText: { color: '#9ca3af', fontSize: 13 },
-  stats: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 16, gap: 20 },
+  stats: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 16, gap: 16, flexWrap: 'wrap' },
   stat: { alignItems: 'center' },
-  statNum: { fontSize: 22, fontWeight: '700', color: '#f9fafb' },
+  statNum: { fontSize: 20, fontWeight: '700', color: '#f9fafb' },
   statLabel: { fontSize: 11, color: '#6b7280', marginTop: 2 },
   tabs: { flexDirection: 'row', marginHorizontal: 16, marginBottom: 8, backgroundColor: '#1f2937', borderRadius: 10, padding: 4 },
   tabBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
