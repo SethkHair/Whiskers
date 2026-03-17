@@ -11,15 +11,24 @@ import {
 } from 'react-native';
 import { supabase } from '../lib/supabase';
 
+type Mode = 'signin' | 'signup' | 'forgot';
+
 export default function AuthScreen() {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const checkTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function switchMode(m: Mode) {
+    setMode(m);
+    setError(null);
+    setSuccess(null);
+  }
 
   function handleUsernameChange(value: string) {
     setUsername(value);
@@ -35,12 +44,13 @@ export default function AuthScreen() {
 
   async function handleSubmit() {
     setError(null);
+    setSuccess(null);
     setLoading(true);
 
     if (mode === 'signin') {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setError(error.message);
-    } else {
+    } else if (mode === 'signup') {
       if (!username.trim()) { setError('Username is required'); setLoading(false); return; }
       if (usernameStatus === 'taken') { setError('Username is already taken'); setLoading(false); return; }
       const { error } = await supabase.auth.signUp({
@@ -49,6 +59,15 @@ export default function AuthScreen() {
         options: { data: { username } },
       });
       if (error) setError(error.message);
+    } else {
+      // Forgot password
+      if (!email.trim()) { setError('Enter your email address'); setLoading(false); return; }
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+      if (error) {
+        setError(error.message);
+      } else {
+        setSuccess('Check your email for a password reset link.');
+      }
     }
 
     setLoading(false);
@@ -62,7 +81,9 @@ export default function AuthScreen() {
       <View style={styles.inner}>
         <Text style={styles.logo}>🥃</Text>
         <Text style={styles.title}>Whiskers</Text>
-        <Text style={styles.subtitle}>Track every dram</Text>
+        <Text style={styles.subtitle}>
+          {mode === 'forgot' ? 'Reset your password' : 'Track every dram'}
+        </Text>
 
         <View style={styles.form}>
           {mode === 'signup' && (
@@ -74,12 +95,14 @@ export default function AuthScreen() {
                 autoCapitalize="none"
                 value={username}
                 onChangeText={handleUsernameChange}
+                accessibilityLabel="Username"
               />
               {usernameStatus === 'checking' && <ActivityIndicator color="#b45309" style={{ marginLeft: 10 }} />}
               {usernameStatus === 'available' && <Text style={styles.available}>✓</Text>}
               {usernameStatus === 'taken' && <Text style={styles.taken}>✗</Text>}
             </View>
           )}
+
           <TextInput
             style={styles.input}
             placeholder="Email"
@@ -88,37 +111,64 @@ export default function AuthScreen() {
             keyboardType="email-address"
             value={email}
             onChangeText={setEmail}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="#9ca3af"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
+            accessibilityLabel="Email address"
           />
 
-          {error && <Text style={styles.error}>{error}</Text>}
+          {mode !== 'forgot' && (
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor="#9ca3af"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+              accessibilityLabel="Password"
+            />
+          )}
 
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleSubmit}
-            disabled={loading}
-          >
-            {loading
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.buttonText}>{mode === 'signin' ? 'Sign In' : 'Create Account'}</Text>
-            }
-          </TouchableOpacity>
+          {mode === 'signin' && (
+            <TouchableOpacity
+              style={styles.forgotLink}
+              onPress={() => switchMode('forgot')}
+              accessibilityLabel="Forgot password"
+            >
+              <Text style={styles.forgotText}>Forgot password?</Text>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity
-            style={styles.toggle}
-            onPress={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(null); }}
-          >
-            <Text style={styles.toggleText}>
-              {mode === 'signin' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-            </Text>
-          </TouchableOpacity>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {success ? <Text style={styles.successText}>{success}</Text> : null}
+
+          {!success && (
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handleSubmit}
+              disabled={loading}
+              accessibilityLabel={mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : 'Send reset link'}
+            >
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.buttonText}>
+                    {mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Send Reset Link'}
+                  </Text>
+              }
+            </TouchableOpacity>
+          )}
+
+          {mode === 'forgot' ? (
+            <TouchableOpacity style={styles.toggle} onPress={() => switchMode('signin')}>
+              <Text style={styles.toggleText}>Back to sign in</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.toggle}
+              onPress={() => switchMode(mode === 'signin' ? 'signup' : 'signin')}
+            >
+              <Text style={styles.toggleText}>
+                {mode === 'signin' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -153,7 +203,10 @@ const styles = StyleSheet.create({
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   toggle: { marginTop: 20, alignItems: 'center' },
   toggleText: { color: '#9ca3af', fontSize: 14 },
+  forgotLink: { alignItems: 'flex-end', marginTop: -4, marginBottom: 8 },
+  forgotText: { color: '#b45309', fontSize: 13 },
   error: { color: '#f87171', fontSize: 14, marginBottom: 8 },
+  successText: { color: '#22c55e', fontSize: 14, marginBottom: 16, textAlign: 'center', lineHeight: 20 },
   inputRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   available: { color: '#22c55e', fontSize: 18, marginLeft: 10 },
   taken: { color: '#f87171', fontSize: 18, marginLeft: 10 },

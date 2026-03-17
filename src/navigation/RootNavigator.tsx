@@ -1,8 +1,11 @@
+import { useEffect, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { useAuth } from '../hooks/useAuth';
+import { isOnboardingDone } from '../screens/OnboardingScreen';
 import AuthScreen from '../screens/AuthScreen';
+import OnboardingScreen from '../screens/OnboardingScreen';
 import MainTabs from './MainTabs';
 import WhiskyDetailScreen from '../screens/WhiskyDetailScreen';
 import LogDramScreen from '../screens/LogDramScreen';
@@ -24,8 +27,17 @@ const styles = StyleSheet.create({
 
 export default function RootNavigator() {
   const { session, loading } = useAuth();
+  const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
 
-  if (loading) return (
+  useEffect(() => {
+    if (!loading && session) {
+      isOnboardingDone().then(done => setOnboardingDone(done));
+    } else if (!loading && !session) {
+      setOnboardingDone(null); // reset so it's checked fresh after next sign-in
+    }
+  }, [loading, session]);
+
+  if (loading || (session && onboardingDone === null)) return (
     <View style={styles.splash}>
       <ActivityIndicator size="large" color="#b45309" />
     </View>
@@ -35,6 +47,9 @@ export default function RootNavigator() {
     <Stack.Navigator>
       {session ? (
         <>
+          {!onboardingDone && (
+            <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
+          )}
           <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
           <Stack.Screen name="WhiskyDetail" component={WhiskyDetailScreen} options={{ title: 'Whisky' }} />
           <Stack.Screen name="LogDram" component={LogDramScreen} options={{ title: 'Log a Dram' }} />

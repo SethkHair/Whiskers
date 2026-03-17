@@ -12,6 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
 import { Checkin, Collection, Profile, RootStackParamList } from '../types';
+import AvatarImage from '../components/AvatarImage';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type ProfileTab = 'drams' | 'collection';
@@ -87,7 +88,8 @@ export default function ProfileScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.headerRow}>
-        <View style={{ flex: 1 }}>
+        <AvatarImage uri={profile?.avatar_url} name={profile?.username ?? 'you'} size={56} />
+        <View style={styles.headerText}>
           <Text style={styles.username}>@{profile?.username ?? 'you'}</Text>
           {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
         </View>
@@ -236,8 +238,9 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#111827' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#111827' },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 16, paddingTop: 56, paddingBottom: 12 },
-  username: { fontSize: 22, fontWeight: '700', color: '#f9fafb' },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, paddingTop: 56, paddingBottom: 12, gap: 12 },
+  headerText: { flex: 1 },
+  username: { fontSize: 20, fontWeight: '700', color: '#f9fafb' },
   bio: { color: '#9ca3af', fontSize: 14, marginTop: 4, maxWidth: 200 },
   headerActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   bellBtn: { position: 'relative', padding: 4 },

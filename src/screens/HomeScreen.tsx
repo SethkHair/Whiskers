@@ -24,6 +24,8 @@ const RATING_LABELS: Record<number, string> = {
 type LikeInfo = { count: number; liked: boolean };
 type TrendingItem = { whisky: Whisky; count: number };
 
+const PAGE_SIZE = 20;
+
 export default function HomeScreen() {
   const navigation = useNavigation<Nav>();
   const [checkins, setCheckins] = useState<Checkin[]>([]);
@@ -33,7 +35,11 @@ export default function HomeScreen() {
   const [trending, setTrending] = useState<TrendingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(0);
   const [followingOnly, setFollowingOnly] = useState(false);
+  const [followedIds, setFollowedIds] = useState<string[]>([]);
   const [error, setError] = useState(false);
 
   async function fetchTrending() {
@@ -61,68 +67,85 @@ export default function HomeScreen() {
     setTrending(sorted);
   }
 
-  async function fetchCheckins() {
+  async function fetchCheckins(pageNum = 0, append = false) {
     setError(false);
     const { data: { user } } = await supabase.auth.getUser();
     const myId = user?.id ?? null;
-    setCurrentUserId(myId);
+    if (!append) setCurrentUserId(myId);
+
+    let ids: string[] = followedIds;
+    if (!append) {
+      // Re-fetch followed IDs on first load/refresh
+      if (myId) {
+        const { data: follows } = await supabase
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', myId);
+        ids = follows && follows.length > 0 ? [...follows.map(f => f.following_id), myId] : [];
+        setFollowedIds(ids);
+        setFollowingOnly(ids.length > 1);
+      } else {
+        ids = [];
+        setFollowingOnly(false);
+      }
+    }
 
     let query = supabase
       .from('checkins')
       .select('*, whisky:whiskies(*), profile:profiles(*)')
       .order('created_at', { ascending: false })
-      .limit(50);
+      .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
 
-    if (myId) {
-      const { data: follows } = await supabase
-        .from('follows')
-        .select('following_id')
-        .eq('follower_id', myId);
-
-      if (follows && follows.length > 0) {
-        const ids = [...follows.map(f => f.following_id), myId];
-        query = query.in('user_id', ids);
-        setFollowingOnly(true);
-      } else {
-        setFollowingOnly(false);
-      }
-    }
+    if (ids.length > 0) query = query.in('user_id', ids);
 
     const { data, error: fetchError } = await query;
     if (fetchError) { setError(true); return; }
 
     const rows = (data ?? []) as Checkin[];
-    setCheckins(rows);
+    setHasMore(rows.length === PAGE_SIZE);
+
+    const newRows = append ? [...checkins, ...rows] : rows;
+    setCheckins(newRows);
 
     if (rows.length === 0) return;
-    const ids = rows.map(c => c.id);
+    const checkinIds = rows.map(c => c.id);
 
     const [{ data: likesData }, { data: commentsData }] = await Promise.all([
-      supabase.from('likes').select('user_id, checkin_id').in('checkin_id', ids),
-      supabase.from('comments').select('checkin_id').in('checkin_id', ids),
+      supabase.from('likes').select('user_id, checkin_id').in('checkin_id', checkinIds),
+      supabase.from('comments').select('checkin_id').in('checkin_id', checkinIds),
     ]);
 
-    const newLikesMap: Record<string, LikeInfo> = {};
-    for (const id of ids) {
+    const newLikesMap: Record<string, LikeInfo> = append ? { ...likesMap } : {};
+    for (const id of checkinIds) {
       const forCheckin = (likesData ?? []).filter(l => l.checkin_id === id);
       newLikesMap[id] = { count: forCheckin.length, liked: myId ? forCheckin.some(l => l.user_id === myId) : false };
     }
     setLikesMap(newLikesMap);
 
-    const newCommentCounts: Record<string, number> = {};
-    for (const id of ids) {
+    const newCommentCounts: Record<string, number> = append ? { ...commentCounts } : {};
+    for (const id of checkinIds) {
       newCommentCounts[id] = (commentsData ?? []).filter(c => c.checkin_id === id).length;
     }
     setCommentCounts(newCommentCounts);
   }
 
+  async function fetchMore() {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    setPage(nextPage);
+    await fetchCheckins(nextPage, true);
+    setLoadingMore(false);
+  }
+
   useEffect(() => {
-    Promise.all([fetchCheckins(), fetchTrending()]).finally(() => setLoading(false));
+    Promise.all([fetchCheckins(0, false), fetchTrending()]).finally(() => setLoading(false));
   }, []);
 
   async function onRefresh() {
     setRefreshing(true);
-    await Promise.all([fetchCheckins(), fetchTrending()]);
+    setPage(0);
+    await Promise.all([fetchCheckins(0, false), fetchTrending()]);
     setRefreshing(false);
   }
 
@@ -189,6 +212,11 @@ export default function HomeScreen() {
               ))}
             </ScrollView>
           </View>
+        ) : null}
+        onEndReached={fetchMore}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={loadingMore ? (
+          <View style={styles.footerLoader}><ActivityIndicator color="#b45309" /></View>
         ) : null}
         ListEmptyComponent={
           <Text style={styles.empty}>
@@ -283,4 +311,5 @@ const styles = StyleSheet.create({
   trendingName: { color: '#f9fafb', fontSize: 13, fontWeight: '700', marginBottom: 3, lineHeight: 17 },
   trendingDistillery: { color: '#9ca3af', fontSize: 11, marginBottom: 6 },
   trendingCount: { color: '#b45309', fontSize: 11, fontWeight: '600' },
+  footerLoader: { paddingVertical: 20, alignItems: 'center' },
 });

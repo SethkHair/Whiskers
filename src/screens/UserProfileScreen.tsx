@@ -12,6 +12,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
 import { Profile, Checkin, RootStackParamList } from '../types';
 import { BADGE_DEFINITIONS } from '../constants/badges';
+import AvatarImage from '../components/AvatarImage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'UserProfile'>;
 
@@ -100,7 +101,8 @@ export default function UserProfileScreen({ route, navigation }: Props) {
         <>
           {/* Header */}
           <View style={styles.header}>
-            <View style={{ flex: 1 }}>
+            <AvatarImage uri={profile?.avatar_url} name={profile?.username ?? 'unknown'} size={56} />
+            <View style={styles.headerText}>
               <Text style={styles.username}>@{profile?.username ?? 'unknown'}</Text>
               {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
             </View>
@@ -176,8 +178,9 @@ export default function UserProfileScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#111827' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#111827' },
-  header: { flexDirection: 'row', alignItems: 'flex-start', padding: 16, paddingTop: 20 },
-  username: { fontSize: 22, fontWeight: '700', color: '#f9fafb' },
+  header: { flexDirection: 'row', alignItems: 'flex-start', padding: 16, paddingTop: 20, gap: 12 },
+  headerText: { flex: 1 },
+  username: { fontSize: 20, fontWeight: '700', color: '#f9fafb' },
   bio: { color: '#9ca3af', fontSize: 14, marginTop: 4, maxWidth: 220 },
   followBtn: { backgroundColor: '#b45309', borderRadius: 10, paddingHorizontal: 20, paddingVertical: 8, minWidth: 90, alignItems: 'center' },
   followingBtn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#b45309' },

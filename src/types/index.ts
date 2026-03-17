@@ -122,6 +122,7 @@ export interface Notification {
 
 export type RootStackParamList = {
   Auth: undefined;
+  Onboarding: undefined;
   Main: undefined;
   WhiskyDetail: { whiskyId: string };
   LogDram: { whiskyId: string; whiskyName: string };
