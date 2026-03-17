@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  Alert,
   SectionList,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -30,6 +29,7 @@ export default function ProfileScreen() {
   const [collection, setCollection] = useState<Collection[]>([]);
   const [tab, setTab] = useState<ProfileTab>('drams');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,10 +52,7 @@ export default function ProfileScreen() {
   }, []);
 
   function signOut() {
-    Alert.alert('Sign out', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: () => supabase.auth.signOut() },
-    ]);
+    supabase.auth.signOut();
   }
 
   if (loading) {
@@ -87,9 +84,20 @@ export default function ProfileScreen() {
               <Text style={styles.adminBtnText}>Admin</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity onPress={signOut} style={styles.signOutBtn}>
-            <Text style={styles.signOutText}>Sign out</Text>
-          </TouchableOpacity>
+          {confirmSignOut ? (
+            <View style={styles.signOutConfirm}>
+              <TouchableOpacity onPress={signOut} style={styles.signOutConfirmBtn}>
+                <Text style={styles.signOutConfirmText}>Confirm</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setConfirmSignOut(false)} style={styles.signOutBtn}>
+                <Text style={styles.signOutText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity onPress={() => setConfirmSignOut(true)} style={styles.signOutBtn}>
+              <Text style={styles.signOutText}>Sign out</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -179,6 +187,9 @@ const styles = StyleSheet.create({
   editBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   adminBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#374151' },
   adminBtnText: { color: '#f9fafb', fontSize: 13, fontWeight: '600' },
+  signOutConfirm: { flexDirection: 'row', gap: 8 },
+  signOutConfirmBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#dc2626' },
+  signOutConfirmText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   signOutBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#374151' },
   signOutText: { color: '#9ca3af', fontSize: 13 },
   stats: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 16, gap: 20 },
