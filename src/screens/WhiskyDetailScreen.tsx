@@ -54,7 +54,10 @@ export default function WhiskyDetailScreen({ route, navigation }: Props) {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.name}>{whisky.name}</Text>
-      <TouchableOpacity onPress={() => navigation.navigate('Distillery', { distillery: whisky.distillery })}>
+      <TouchableOpacity onPress={() => navigation.navigate('Distillery', {
+        distillery: whisky.distillery,
+        distilleryId: whisky.distillery_id ?? undefined,
+      })}>
         <Text style={styles.distillery}>{whisky.distillery} ›</Text>
       </TouchableOpacity>
 

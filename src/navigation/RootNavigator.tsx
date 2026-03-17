@@ -14,6 +14,8 @@ import AdminApprovalScreen from '../screens/AdminApprovalScreen';
 import CommentsScreen from '../screens/CommentsScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import FollowListScreen from '../screens/FollowListScreen';
+import AdminDistilleryScreen from '../screens/AdminDistilleryScreen';
+import EditDistilleryScreen from '../screens/EditDistilleryScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const styles = StyleSheet.create({
@@ -44,6 +46,8 @@ export default function RootNavigator() {
           <Stack.Screen name="Comments" component={CommentsScreen} options={{ title: 'Comments' }} />
           <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="FollowList" component={FollowListScreen} options={{ title: '' }} />
+          <Stack.Screen name="AdminDistillery" component={AdminDistilleryScreen} options={{ title: 'Distilleries' }} />
+          <Stack.Screen name="EditDistillery" component={EditDistilleryScreen} options={{ title: 'Distillery' }} />
         </>
       ) : (
         <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />

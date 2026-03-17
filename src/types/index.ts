@@ -12,10 +12,26 @@ export interface Profile {
   created_at: string;
 }
 
+export interface Distillery {
+  id: string;
+  name: string;
+  country: string | null;
+  region: string | null;
+  founded_year: number | null;
+  description: string | null;
+  website: string | null;
+  parent_id: string | null;
+  created_at: string;
+  // Joined fields
+  parent?: Distillery;
+  children?: Distillery[];
+}
+
 export interface Whisky {
   id: string;
   name: string;
   distillery: string;
+  distillery_id: string | null;
   region: string | null;
   country: string;
   type: WhiskyType;
@@ -25,6 +41,7 @@ export interface Whisky {
   status: WhiskyStatus;
   submitted_by: string | null;
   created_at: string;
+  distillery_profile?: Distillery;
 }
 
 export interface Checkin {
@@ -110,12 +127,14 @@ export type RootStackParamList = {
   LogDram: { whiskyId: string; whiskyName: string };
   SubmitWhisky: undefined;
   UserProfile: { userId: string };
-  Distillery: { distillery: string };
+  Distillery: { distillery: string; distilleryId?: string };
   EditProfile: undefined;
   AdminApproval: undefined;
   Comments: { checkinId: string; checkinUserId: string };
   Notifications: undefined;
   FollowList: { userId: string; mode: 'followers' | 'following' };
+  AdminDistillery: undefined;
+  EditDistillery: { distilleryId?: string };
 };
 
 export type TabParamList = {

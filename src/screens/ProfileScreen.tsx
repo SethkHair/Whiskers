@@ -108,9 +108,14 @@ export default function ProfileScreen() {
             <Text style={styles.editBtnText}>Edit</Text>
           </TouchableOpacity>
           {isAdmin && (
-            <TouchableOpacity style={styles.adminBtn} onPress={() => navigation.navigate('AdminApproval')}>
-              <Text style={styles.adminBtnText}>Admin</Text>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity style={styles.adminBtn} onPress={() => navigation.navigate('AdminApproval')}>
+                <Text style={styles.adminBtnText}>Whiskies</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.adminBtn} onPress={() => navigation.navigate('AdminDistillery')}>
+                <Text style={styles.adminBtnText}>Distilleries</Text>
+              </TouchableOpacity>
+            </>
           )}
           {confirmSignOut ? (
             <View style={styles.signOutConfirm}>
