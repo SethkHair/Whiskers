@@ -115,3 +115,29 @@ export const WHISKY_COUNTRIES = [
   'Scotland', 'USA', 'Ireland', 'Japan', 'Canada',
   'India', 'Taiwan', 'Australia', 'Other',
 ];
+
+import { WhiskyType } from '../types';
+
+export const COUNTRY_TYPES: Record<string, WhiskyType[]> = {
+  Scotland:  ['single_malt', 'blended'],
+  USA:       ['bourbon', 'rye', 'other'],
+  Ireland:   ['irish', 'blended', 'other'],
+  Japan:     ['japanese', 'single_malt', 'blended', 'other'],
+  Canada:    ['blended', 'rye', 'other'],
+  India:     ['single_malt', 'blended', 'other'],
+  Taiwan:    ['single_malt', 'other'],
+  Australia: ['single_malt', 'blended', 'other'],
+  Other:     ['single_malt', 'blended', 'bourbon', 'rye', 'irish', 'japanese', 'other'],
+};
+
+export const COUNTRY_REGIONS: Record<string, string[]> = {
+  Scotland:  ['Speyside', 'Highlands', 'Islay', 'Lowlands', 'Campbeltown', 'Islands'],
+  USA:       ['Kentucky', 'Tennessee', 'Other'],
+  Ireland:   ['Other'],
+  Japan:     ['Other'],
+  Canada:    ['Other'],
+  India:     ['Other'],
+  Taiwan:    ['Other'],
+  Australia: ['Other'],
+  Other:     ['Other'],
+};

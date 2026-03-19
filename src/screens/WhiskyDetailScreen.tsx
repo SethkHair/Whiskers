@@ -92,12 +92,29 @@ export default function WhiskyDetailScreen({ route, navigation }: Props) {
         {whisky.abv && <Tag label={`${whisky.abv}% ABV`} />}
       </View>
 
-      {avgRating && (
-        <View style={styles.ratingRow}>
-          <Text style={styles.ratingNum}>{avgRating}</Text>
-          <Text style={styles.ratingLabel}> avg from {checkins.length} dram{checkins.length !== 1 ? 's' : ''}</Text>
-        </View>
-      )}
+      {checkins.length > 0 && (() => {
+        const dist = [5, 4, 3, 2, 1].map(s => ({ star: s, count: checkins.filter(c => c.rating === s).length }));
+        const max = Math.max(...dist.map(d => d.count), 1);
+        return (
+          <View style={styles.ratingBlock}>
+            <View style={styles.ratingRow}>
+              <Text style={styles.ratingNum}>{avgRating}</Text>
+              <Text style={styles.ratingLabel}> avg · {checkins.length} dram{checkins.length !== 1 ? 's' : ''}</Text>
+            </View>
+            <View style={styles.distRows}>
+              {dist.map(({ star, count }) => (
+                <View key={star} style={styles.distRow}>
+                  <Text style={styles.distStar}>{'★'.repeat(star)}</Text>
+                  <View style={styles.distBarBg}>
+                    <View style={[styles.distBarFill, { width: `${(count / max) * 100}%` as any }]} />
+                  </View>
+                  <Text style={styles.distCount}>{count}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        );
+      })()}
 
       {whisky.description && <Text style={styles.description}>{whisky.description}</Text>}
 
@@ -204,4 +221,11 @@ const styles = StyleSheet.create({
   notesCategory: { color: '#6b7280', fontSize: 12, fontWeight: '600', width: 48, paddingTop: 4 },
   notesTags: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   notesTag: { backgroundColor: '#374151', color: '#d1d5db', fontSize: 12, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, textTransform: 'capitalize' },
+  ratingBlock: { marginBottom: 16 },
+  distRows: { gap: 4 },
+  distRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  distStar: { color: '#f59e0b', fontSize: 11, width: 56 },
+  distBarBg: { flex: 1, height: 6, backgroundColor: '#1f2937', borderRadius: 3, overflow: 'hidden' },
+  distBarFill: { height: 6, backgroundColor: '#b45309', borderRadius: 3 },
+  distCount: { color: '#6b7280', fontSize: 11, width: 16, textAlign: 'right' },
 });

@@ -13,7 +13,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
 import { Whisky, WhiskyType, RootStackParamList } from '../types';
-import { WHISKY_REGIONS, WHISKY_COUNTRIES } from '../constants/badges';
+import { WHISKY_COUNTRIES, COUNTRY_TYPES, COUNTRY_REGIONS } from '../constants/badges';
 import Toast from '../components/Toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditWhisky'>;
@@ -69,7 +69,15 @@ export default function EditWhiskyScreen({ route, navigation }: Props) {
   const [distillery, setDistillery] = useState('');
   const [country, setCountry] = useState<string>(WHISKY_COUNTRIES[0]);
   const [region, setRegion] = useState<string>('None');
-  const [type, setType] = useState<WhiskyType>('single_malt');
+  const [type, setType] = useState<WhiskyType>(COUNTRY_TYPES[WHISKY_COUNTRIES[0]][0]);
+
+  function handleCountryChange(c: string) {
+    setCountry(c);
+    const allowedTypes = COUNTRY_TYPES[c] ?? COUNTRY_TYPES['Other'];
+    if (!allowedTypes.includes(type)) setType(allowedTypes[0]);
+    const allowedRegions = COUNTRY_REGIONS[c] ?? COUNTRY_REGIONS['Other'];
+    if (!allowedRegions.includes(region)) setRegion('None');
+  }
   const [age, setAge] = useState('');
   const [abv, setAbv] = useState('');
   const [description, setDescription] = useState('');
@@ -132,9 +140,9 @@ export default function EditWhiskyScreen({ route, navigation }: Props) {
         <Text style={styles.label}>Distillery *</Text>
         <TextInput style={styles.input} value={distillery} onChangeText={setDistillery} placeholder="e.g. Lagavulin" placeholderTextColor="#6b7280" />
 
-        <OptionGroup label="Type" options={WHISKY_TYPES} value={type} onChange={setType} />
-        <OptionGroup label="Country" options={WHISKY_COUNTRIES} value={country} onChange={setCountry} />
-        <OptionGroup label="Region" options={['None', ...WHISKY_REGIONS]} value={region} onChange={setRegion} />
+        <OptionGroup label="Country" options={WHISKY_COUNTRIES} value={country} onChange={handleCountryChange} />
+        <OptionGroup label="Type" options={WHISKY_TYPES.filter(t => (COUNTRY_TYPES[country] ?? COUNTRY_TYPES['Other']).includes(t.value))} value={type} onChange={setType} />
+        <OptionGroup label="Region" options={['None', ...(COUNTRY_REGIONS[country] ?? COUNTRY_REGIONS['Other'])]} value={region} onChange={setRegion} />
 
         <View style={styles.row}>
           <View style={{ flex: 1, marginRight: 8 }}>

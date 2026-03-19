@@ -14,7 +14,32 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
 import { Distillery, Whisky, RootStackParamList } from '../types';
+import { WHISKY_COUNTRIES, COUNTRY_REGIONS } from '../constants/badges';
 import Toast from '../components/Toast';
+
+function OptionGroup({ label, options, value, onChange }: {
+  label: string;
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <View style={{ marginBottom: 20 }}>
+      <Text style={styles.label}>{label}</Text>
+      <View style={styles.optionWrap}>
+        {options.map(o => (
+          <TouchableOpacity
+            key={o}
+            style={[styles.option, value === o && styles.optionActive]}
+            onPress={() => onChange(o)}
+          >
+            <Text style={[styles.optionText, value === o && styles.optionTextActive]}>{o}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditDistillery'>;
 
@@ -23,8 +48,14 @@ export default function EditDistilleryScreen({ route, navigation }: Props) {
   const isEditing = !!distilleryId;
 
   const [name, setName] = useState('');
-  const [country, setCountry] = useState('');
-  const [region, setRegion] = useState('');
+  const [country, setCountry] = useState(WHISKY_COUNTRIES[0]);
+  const [region, setRegion] = useState('Other');
+
+  function handleCountryChange(c: string) {
+    setCountry(c);
+    const allowed = COUNTRY_REGIONS[c] ?? COUNTRY_REGIONS['Other'];
+    if (!allowed.includes(region)) setRegion(allowed[0]);
+  }
   const [foundedYear, setFoundedYear] = useState('');
   const [description, setDescription] = useState('');
   const [website, setWebsite] = useState('');
@@ -53,8 +84,11 @@ export default function EditDistilleryScreen({ route, navigation }: Props) {
     if (!data) { setLoading(false); return; }
     const d = data as Distillery;
     setName(d.name);
-    setCountry(d.country ?? '');
-    setRegion(d.region ?? '');
+    const c = WHISKY_COUNTRIES.includes(d.country ?? '') ? (d.country ?? WHISKY_COUNTRIES[0]) : 'Other';
+    setCountry(c);
+    const allowedRegions = COUNTRY_REGIONS[c] ?? COUNTRY_REGIONS['Other'];
+    const r = d.region ?? 'Other';
+    setRegion(allowedRegions.includes(r) ? r : allowedRegions[0]);
     setFoundedYear(d.founded_year ? String(d.founded_year) : '');
     setDescription(d.description ?? '');
     setWebsite(d.website ?? '');
@@ -115,8 +149,8 @@ export default function EditDistilleryScreen({ route, navigation }: Props) {
 
     const payload = {
       name: name.trim(),
-      country: country.trim() || null,
-      region: region.trim() || null,
+      country: country || null,
+      region: region === 'Other' ? null : region || null,
       founded_year: foundedYear ? parseInt(foundedYear) : null,
       description: description.trim() || null,
       website: website.trim() || null,
@@ -166,11 +200,8 @@ export default function EditDistilleryScreen({ route, navigation }: Props) {
         <Text style={styles.label}>Name *</Text>
         <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Distillery name" placeholderTextColor="#6b7280" autoCapitalize="words" />
 
-        <Text style={styles.label}>Country</Text>
-        <TextInput style={styles.input} value={country} onChangeText={setCountry} placeholder="e.g. Scotland" placeholderTextColor="#6b7280" autoCapitalize="words" />
-
-        <Text style={styles.label}>Region</Text>
-        <TextInput style={styles.input} value={region} onChangeText={setRegion} placeholder="e.g. Islay, Speyside, Kentucky" placeholderTextColor="#6b7280" autoCapitalize="words" />
+        <OptionGroup label="Country" options={WHISKY_COUNTRIES} value={country} onChange={handleCountryChange} />
+        <OptionGroup label="Region" options={COUNTRY_REGIONS[country] ?? COUNTRY_REGIONS['Other']} value={region} onChange={setRegion} />
 
         <Text style={styles.label}>Founded Year</Text>
         <TextInput style={styles.input} value={foundedYear} onChangeText={setFoundedYear} placeholder="e.g. 1881" placeholderTextColor="#6b7280" keyboardType="number-pad" maxLength={4} />
@@ -264,6 +295,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#111827' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#111827' },
   content: { padding: 20, paddingBottom: 48 },
+  optionWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  option: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: '#374151', backgroundColor: '#1f2937' },
+  optionActive: { backgroundColor: '#b45309', borderColor: '#b45309' },
+  optionText: { color: '#9ca3af', fontSize: 13 },
+  optionTextActive: { color: '#fff', fontWeight: '600' },
   label: { fontSize: 13, fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
   input: {
     backgroundColor: '#1f2937',
