@@ -4,30 +4,15 @@ import { supabase } from '../lib/supabase';
 import { BADGE_DEFINITIONS } from '../constants/badges';
 import { UserBadge } from '../types';
 
-type Stats = {
-  checkin_count: number;
-  region_count: number;   // Islay count
-  bourbon_count: number;
-  country_count: number;
-  region_variety: number;
-  submitted_count: number;
-};
+type Stats = Record<string, number>;
 
 function getProgress(badge: typeof BADGE_DEFINITIONS[number], stats: Stats): number {
-  switch (badge.criteria_type) {
-    case 'checkin_count':  return stats.checkin_count;
-    case 'region_count':   return stats.region_count;
-    case 'bourbon_count':  return stats.bourbon_count;
-    case 'country_count':  return stats.country_count;
-    case 'region_variety': return stats.region_variety;
-    case 'submitted_count': return stats.submitted_count;
-    default: return 0;
-  }
+  return stats[badge.criteria_type] ?? 0;
 }
 
 export default function BadgesScreen() {
   const [earned, setEarned] = useState<Set<string>>(new Set());
-  const [stats, setStats] = useState<Stats>({ checkin_count: 0, region_count: 0, bourbon_count: 0, country_count: 0, region_variety: 0, submitted_count: 0 });
+  const [stats, setStats] = useState<Stats>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,27 +20,52 @@ export default function BadgesScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
 
-      const [{ data: badgeRows }, { data: checkinRows }, { count: submittedCount }] = await Promise.all([
+      const [
+        { data: badgeRows },
+        { data: checkinRows },
+        { count: submittedCount },
+        { count: followingCount },
+        { data: likesData },
+        { data: collection },
+      ] = await Promise.all([
         supabase.from('user_badges').select('badge_id').eq('user_id', user.id),
-        supabase.from('checkins').select('whisky:whiskies(type, region, country)').eq('user_id', user.id),
+        supabase.from('checkins').select('rating, overall_notes, whisky:whiskies(type, region, country, age_statement, abv, flavor_tags)').eq('user_id', user.id),
         supabase.from('whiskies').select('*', { count: 'exact', head: true }).eq('submitted_by', user.id).eq('status', 'approved'),
+        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', user.id),
+        supabase.from('likes').select('checkin_id, checkins!inner(user_id)').eq('checkins.user_id', user.id),
+        supabase.from('collection').select('status').eq('user_id', user.id),
       ]);
 
       if (badgeRows) setEarned(new Set((badgeRows as Pick<UserBadge, 'badge_id'>[]).map(b => b.badge_id)));
 
       if (checkinRows) {
         const whiskies = checkinRows.map((c: any) => c.whisky).filter(Boolean);
-        const islayCount = whiskies.filter((w: any) => w.region === 'Islay').length;
-        const bourbonCount = whiskies.filter((w: any) => w.type === 'bourbon').length;
-        const countries = new Set(whiskies.map((w: any) => w.country).filter(Boolean));
-        const regions = new Set(whiskies.map((w: any) => w.region).filter(Boolean));
+        const flavorTagSet = new Set<string>();
+        for (const w of whiskies) for (const t of (w.flavor_tags ?? [])) flavorTagSet.add(t);
+
         setStats({
-          checkin_count: checkinRows.length,
-          region_count: islayCount,
-          bourbon_count: bourbonCount,
-          country_count: countries.size,
-          region_variety: regions.size,
-          submitted_count: submittedCount ?? 0,
+          checkin_count:       checkinRows.length,
+          region_count:        whiskies.filter((w: any) => w.region === 'Islay').length,
+          bourbon_count:       whiskies.filter((w: any) => w.type === 'bourbon').length,
+          country_count:       new Set(whiskies.map((w: any) => w.country).filter(Boolean)).size,
+          region_variety:      new Set(whiskies.map((w: any) => w.region).filter(Boolean)).size,
+          submitted_count:     submittedCount ?? 0,
+          rye_count:           whiskies.filter((w: any) => w.type === 'rye').length,
+          japanese_count:      whiskies.filter((w: any) => w.type === 'japanese').length,
+          irish_count:         whiskies.filter((w: any) => w.type === 'irish').length,
+          speyside_count:      whiskies.filter((w: any) => w.region === 'Speyside').length,
+          highlands_count:     whiskies.filter((w: any) => w.region === 'Highlands').length,
+          single_malt_count:   whiskies.filter((w: any) => w.type === 'single_malt').length,
+          age_18_plus:         whiskies.some((w: any) => w.age_statement >= 18) ? 1 : 0,
+          age_25_plus:         whiskies.some((w: any) => w.age_statement >= 25) ? 1 : 0,
+          high_abv:            whiskies.some((w: any) => w.abv >= 55) ? 1 : 0,
+          five_star_count:     checkinRows.filter((c: any) => c.rating === 5).length,
+          noted_checkin_count: checkinRows.filter((c: any) => c.overall_notes?.trim()).length,
+          following_count:     followingCount ?? 0,
+          likes_received:      (likesData ?? []).length,
+          collection_count:    (collection ?? []).length,
+          want_count:          (collection ?? []).filter((c: any) => c.status === 'want').length,
+          flavor_variety:      flavorTagSet.size,
         });
       }
 

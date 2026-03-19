@@ -2,46 +2,60 @@ import { supabase } from './supabase';
 import { BADGE_DEFINITIONS } from '../constants/badges';
 
 export async function checkAndAwardBadges(userId: string) {
-  // Fetch all checkins for this user with whisky info
-  const { data: checkins } = await supabase
-    .from('checkins')
-    .select('*, whisky:whiskies(type, region, country)')
-    .eq('user_id', userId);
+  const [
+    { data: checkins },
+    { data: earned },
+    { count: submittedCount },
+    { count: followingCount },
+    { data: likesData },
+    { data: collection },
+  ] = await Promise.all([
+    supabase
+      .from('checkins')
+      .select('rating, overall_notes, whisky:whiskies(type, region, country, age_statement, abv, flavor_tags)')
+      .eq('user_id', userId),
+    supabase.from('user_badges').select('badge_id').eq('user_id', userId),
+    supabase.from('whiskies').select('*', { count: 'exact', head: true }).eq('submitted_by', userId).eq('status', 'approved'),
+    supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', userId),
+    supabase.from('likes').select('checkin_id, checkins!inner(user_id)').eq('checkins.user_id', userId),
+    supabase.from('collection').select('status').eq('user_id', userId),
+  ]);
 
   if (!checkins) return;
 
-  // Fetch already-earned badges
-  const { data: earned } = await supabase
-    .from('user_badges')
-    .select('badge_id')
-    .eq('user_id', userId);
+  const earnedIds = new Set((earned ?? []).map((b: any) => b.badge_id));
+  const whiskies = checkins.map((c: any) => c.whisky).filter(Boolean);
 
-  const earnedIds = new Set((earned ?? []).map(b => b.badge_id));
-
-  // Fetch approved submission count
-  const { count: submittedCount } = await supabase
-    .from('whiskies')
-    .select('*', { count: 'exact', head: true })
-    .eq('submitted_by', userId)
-    .eq('status', 'approved');
-
-  // Compute stats
-  const checkinCount = checkins.length;
-  const islayCount = checkins.filter(c => c.whisky?.region === 'Islay').length;
-  const bourbonCount = checkins.filter(c => c.whisky?.type === 'bourbon').length;
-  const uniqueCountries = new Set(checkins.map(c => c.whisky?.country).filter(Boolean)).size;
-  const uniqueRegions = new Set(checkins.map(c => c.whisky?.region).filter(Boolean)).size;
+  const flavorTagSet = new Set<string>();
+  for (const w of whiskies) {
+    for (const tag of (w.flavor_tags ?? [])) flavorTagSet.add(tag);
+  }
 
   const stats: Record<string, number> = {
-    checkin_count: checkinCount,
-    region_count: islayCount,
-    bourbon_count: bourbonCount,
-    country_count: uniqueCountries,
-    region_variety: uniqueRegions,
-    submitted_count: submittedCount ?? 0,
+    checkin_count:      checkins.length,
+    region_count:       whiskies.filter((w: any) => w.region === 'Islay').length,
+    bourbon_count:      whiskies.filter((w: any) => w.type === 'bourbon').length,
+    country_count:      new Set(whiskies.map((w: any) => w.country).filter(Boolean)).size,
+    region_variety:     new Set(whiskies.map((w: any) => w.region).filter(Boolean)).size,
+    submitted_count:    submittedCount ?? 0,
+    rye_count:          whiskies.filter((w: any) => w.type === 'rye').length,
+    japanese_count:     whiskies.filter((w: any) => w.type === 'japanese').length,
+    irish_count:        whiskies.filter((w: any) => w.type === 'irish').length,
+    speyside_count:     whiskies.filter((w: any) => w.region === 'Speyside').length,
+    highlands_count:    whiskies.filter((w: any) => w.region === 'Highlands').length,
+    single_malt_count:  whiskies.filter((w: any) => w.type === 'single_malt').length,
+    age_18_plus:        whiskies.some((w: any) => w.age_statement >= 18) ? 1 : 0,
+    age_25_plus:        whiskies.some((w: any) => w.age_statement >= 25) ? 1 : 0,
+    high_abv:           whiskies.some((w: any) => w.abv >= 55) ? 1 : 0,
+    five_star_count:    checkins.filter((c: any) => c.rating === 5).length,
+    noted_checkin_count: checkins.filter((c: any) => c.overall_notes?.trim()).length,
+    following_count:    followingCount ?? 0,
+    likes_received:     (likesData ?? []).length,
+    collection_count:   (collection ?? []).length,
+    want_count:         (collection ?? []).filter((c: any) => c.status === 'want').length,
+    flavor_variety:     flavorTagSet.size,
   };
 
-  // Award any newly earned badges
   const toAward = BADGE_DEFINITIONS.filter(
     b => !earnedIds.has(b.id) && (stats[b.criteria_type] ?? 0) >= b.criteria_value
   );
