@@ -14,7 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Fuse from 'fuse.js';
 import { supabase } from '../lib/supabase';
 import { Whisky, Profile, WhiskyType, RootStackParamList } from '../types';
-import { WHISKY_REGIONS, WHISKY_COUNTRIES } from '../constants/badges';
+import { WHISKY_COUNTRIES, COUNTRY_REGIONS, FLAVOR_TAGS } from '../constants/badges';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Tab = 'whiskies' | 'people';
@@ -40,7 +40,12 @@ export default function SearchScreen() {
   const [filterType, setFilterType] = useState<WhiskyType | null>(null);
   const [filterCountry, setFilterCountry] = useState<string | null>(null);
   const [filterRegion, setFilterRegion] = useState<string | null>(null);
+  const [filterFlavors, setFilterFlavors] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+
+  function toggleFlavorFilter(tag: string) {
+    setFilterFlavors(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+  }
 
   const [people, setPeople] = useState<Profile[]>([]);
   const [peopleFuse, setPeopleFuse] = useState<Fuse<Profile> | null>(null);
@@ -71,20 +76,24 @@ export default function SearchScreen() {
     if (filterType) results = results.filter(w => w.type === filterType);
     if (filterCountry) results = results.filter(w => w.country === filterCountry);
     if (filterRegion) results = results.filter(w => w.region === filterRegion);
+    if (filterFlavors.length > 0) results = results.filter(w =>
+      filterFlavors.every(tag => (w.flavor_tags ?? []).includes(tag))
+    );
     return results;
-  }, [query, whiskies, whiskyFuse, filterType, filterCountry, filterRegion]);
+  }, [query, whiskies, whiskyFuse, filterType, filterCountry, filterRegion, filterFlavors]);
 
   const displayedPeople = useMemo(() => {
     if (!query.trim()) return people;
     return peopleFuse ? peopleFuse.search(query).map(r => r.item) : people;
   }, [query, people, peopleFuse]);
 
-  const activeFilterCount = [filterType, filterCountry, filterRegion].filter(Boolean).length;
+  const activeFilterCount = [filterType, filterCountry, filterRegion].filter(Boolean).length + filterFlavors.length;
 
   function clearFilters() {
     setFilterType(null);
     setFilterCountry(null);
     setFilterRegion(null);
+    setFilterFlavors([]);
   }
 
   function switchTab(t: Tab) {
@@ -163,7 +172,7 @@ export default function SearchScreen() {
           <View style={styles.filterRow}>
             <Text style={styles.filterLabel}>Region</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-              {WHISKY_REGIONS.map(r => (
+              {(filterCountry ? (COUNTRY_REGIONS[filterCountry] ?? COUNTRY_REGIONS['Other']) : Object.values(COUNTRY_REGIONS).flat().filter((v, i, a) => a.indexOf(v) === i)).map(r => (
                 <TouchableOpacity
                   key={r}
                   style={[styles.chip, filterRegion === r && styles.chipActive]}
@@ -173,6 +182,21 @@ export default function SearchScreen() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
+          </View>
+
+          <View style={styles.filterRow}>
+            <Text style={styles.filterLabel}>Flavor Profile</Text>
+            <View style={styles.flavorWrap}>
+              {FLAVOR_TAGS.map(tag => (
+                <TouchableOpacity
+                  key={tag}
+                  style={[styles.chip, filterFlavors.includes(tag) && styles.chipActive]}
+                  onPress={() => toggleFlavorFilter(tag)}
+                >
+                  <Text style={[styles.chipText, filterFlavors.includes(tag) && styles.chipTextActive]}>{tag}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
           {activeFilterCount > 0 && (
@@ -271,6 +295,7 @@ const styles = StyleSheet.create({
   filterRow: { marginBottom: 10 },
   filterLabel: { color: '#6b7280', fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
   chipRow: { gap: 6 },
+  flavorWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: '#374151', backgroundColor: '#111827' },
   chipActive: { backgroundColor: '#b45309', borderColor: '#b45309' },
   chipText: { color: '#9ca3af', fontSize: 12 },

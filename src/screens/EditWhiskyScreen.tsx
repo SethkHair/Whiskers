@@ -13,7 +13,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
 import { Whisky, WhiskyType, RootStackParamList } from '../types';
-import { WHISKY_COUNTRIES, COUNTRY_TYPES, COUNTRY_REGIONS } from '../constants/badges';
+import { WHISKY_COUNTRIES, COUNTRY_TYPES, COUNTRY_REGIONS, FLAVOR_TAGS } from '../constants/badges';
 import Toast from '../components/Toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditWhisky'>;
@@ -81,8 +81,13 @@ export default function EditWhiskyScreen({ route, navigation }: Props) {
   const [age, setAge] = useState('');
   const [abv, setAbv] = useState('');
   const [description, setDescription] = useState('');
+  const [flavorTags, setFlavorTags] = useState<string[]>([]);
 
   const [loading, setLoading] = useState(true);
+
+  function toggleFlavor(tag: string) {
+    setFlavorTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+  }
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -100,6 +105,7 @@ export default function EditWhiskyScreen({ route, navigation }: Props) {
       setAge(w.age_statement ? String(w.age_statement) : '');
       setAbv(w.abv ? String(w.abv) : '');
       setDescription(w.description ?? '');
+      setFlavorTags(w.flavor_tags ?? []);
       setLoading(false);
     }
     load();
@@ -121,6 +127,7 @@ export default function EditWhiskyScreen({ route, navigation }: Props) {
       age_statement: age ? parseInt(age, 10) : null,
       abv: abv ? parseFloat(abv) : null,
       description: description.trim() || null,
+      flavor_tags: flavorTags,
     }).eq('id', whiskyId);
     setSaving(false);
     if (e) { setError(e.message); return; }
@@ -155,7 +162,20 @@ export default function EditWhiskyScreen({ route, navigation }: Props) {
           </View>
         </View>
 
-        <Text style={styles.label}>Description</Text>
+        <Text style={styles.label}>Flavor Profile</Text>
+        <View style={styles.optionWrap}>
+          {FLAVOR_TAGS.map(tag => (
+            <TouchableOpacity
+              key={tag}
+              style={[styles.option, flavorTags.includes(tag) && styles.optionActive]}
+              onPress={() => toggleFlavor(tag)}
+            >
+              <Text style={[styles.optionText, flavorTags.includes(tag) && styles.optionTextActive]}>{tag}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={[styles.label, { marginTop: 12 }]}>Description</Text>
         <TextInput
           style={[styles.input, { minHeight: 80 }]}
           value={description}

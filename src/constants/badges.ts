@@ -118,6 +118,21 @@ export const WHISKY_COUNTRIES = [
 
 import { WhiskyType } from '../types';
 
+export const FLAVOR_TAGS = [
+  // Smoke & Peat
+  'Peaty', 'Smoky', 'Medicinal', 'Briny',
+  // Sweet
+  'Sweet', 'Vanilla', 'Caramel', 'Honey', 'Chocolate', 'Toffee',
+  // Fruit
+  'Fruity', 'Citrus', 'Apple / Pear', 'Stone Fruit', 'Dried Fruit', 'Tropical',
+  // Spice
+  'Spicy', 'Peppery', 'Cinnamon', 'Ginger',
+  // Earthy / Woody
+  'Woody / Oak', 'Nutty', 'Grainy', 'Herbal', 'Floral',
+  // Rich
+  'Sherry', 'Creamy', 'Buttery',
+];
+
 export const COUNTRY_TYPES: Record<string, WhiskyType[]> = {
   Scotland:  ['single_malt', 'blended'],
   USA:       ['bourbon', 'rye', 'other'],

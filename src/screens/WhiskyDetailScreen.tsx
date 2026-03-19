@@ -116,6 +116,16 @@ export default function WhiskyDetailScreen({ route, navigation }: Props) {
         );
       })()}
 
+      {whisky.flavor_tags?.length > 0 && (
+        <View style={styles.flavorRow}>
+          {whisky.flavor_tags.map(tag => (
+            <View key={tag} style={styles.flavorTag}>
+              <Text style={styles.flavorTagText}>{tag}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
       {whisky.description && <Text style={styles.description}>{whisky.description}</Text>}
 
       <CollectionButton whiskyId={whisky.id} />
@@ -228,4 +238,7 @@ const styles = StyleSheet.create({
   distBarBg: { flex: 1, height: 6, backgroundColor: '#1f2937', borderRadius: 3, overflow: 'hidden' },
   distBarFill: { height: 6, backgroundColor: '#b45309', borderRadius: 3 },
   distCount: { color: '#6b7280', fontSize: 11, width: 16, textAlign: 'right' },
+  flavorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 16 },
+  flavorTag: { backgroundColor: '#1f2937', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: '#374151' },
+  flavorTagText: { color: '#d1d5db', fontSize: 12 },
 });

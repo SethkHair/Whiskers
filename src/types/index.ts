@@ -38,6 +38,7 @@ export interface Whisky {
   age_statement: number | null;
   abv: number | null;
   description: string | null;
+  flavor_tags: string[];
   status: WhiskyStatus;
   submitted_by: string | null;
   created_at: string;
