@@ -35,9 +35,10 @@ export default function BadgesScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
 
-      const [{ data: badgeRows }, { data: checkinRows }] = await Promise.all([
+      const [{ data: badgeRows }, { data: checkinRows }, { count: submittedCount }] = await Promise.all([
         supabase.from('user_badges').select('badge_id').eq('user_id', user.id),
         supabase.from('checkins').select('whisky:whiskies(type, region, country)').eq('user_id', user.id),
+        supabase.from('whiskies').select('*', { count: 'exact', head: true }).eq('submitted_by', user.id).eq('status', 'approved'),
       ]);
 
       if (badgeRows) setEarned(new Set((badgeRows as Pick<UserBadge, 'badge_id'>[]).map(b => b.badge_id)));
@@ -54,6 +55,7 @@ export default function BadgesScreen() {
           bourbon_count: bourbonCount,
           country_count: countries.size,
           region_variety: regions.size,
+          submitted_count: submittedCount ?? 0,
         });
       }
 

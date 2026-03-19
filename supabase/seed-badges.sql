@@ -5,5 +5,11 @@ insert into public.badges (id, name, description, icon, criteria_type, criteria_
   ('peat_head',     'Peat Head',     'Try 5 whiskies from the Islay region',      '💨', 'region_count',   5),
   ('bourbon_trail', 'Bourbon Trail', 'Try 5 different Bourbons',                  '🌽', 'bourbon_count',  5),
   ('globe_trotter', 'Globe Trotter', 'Try whiskies from 5 different countries',   '🌍', 'country_count',  5),
-  ('explorer',      'Explorer',      'Try whiskies from 3 different regions',     '🧭', 'region_variety', 3)
+  ('explorer',         'Explorer',           'Try whiskies from 3 different regions',         '🧭', 'region_variety',  3),
+  ('first_drop',       'First Drop',         'Get your first whisky submission approved',      '💧', 'submitted_count', 1),
+  ('nosing_around',    'Nosing Around',      'Get 5 whisky submissions approved',              '👃', 'submitted_count', 5),
+  ('whisky_scout',     'Whisky Scout',       'Get 10 whisky submissions approved',             '🔍', 'submitted_count', 10),
+  ('curator',          'Curator',            'Get 25 whisky submissions approved',             '📚', 'submitted_count', 25),
+  ('cellar_master',    'Cellar Master',      'Get 50 whisky submissions approved',             '🗝️', 'submitted_count', 50),
+  ('distillers_choice','Distiller''s Choice','Get 100 whisky submissions approved',            '🏆', 'submitted_count', 100)
 on conflict (id) do nothing;

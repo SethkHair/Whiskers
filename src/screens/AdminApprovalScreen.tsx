@@ -10,6 +10,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
+import { checkAndAwardBadges } from '../lib/checkBadges';
 import { Whisky, RootStackParamList } from '../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -38,8 +39,10 @@ export default function AdminApprovalScreen() {
 
   async function approve(id: string) {
     setActing(id);
+    const whisky = whiskies.find(w => w.id === id);
     await supabase.from('whiskies').update({ status: 'approved' }).eq('id', id);
     setWhiskies(w => w.filter(x => x.id !== id));
+    if (whisky?.submitted_by) checkAndAwardBadges(whisky.submitted_by);
     setActing(null);
   }
 
