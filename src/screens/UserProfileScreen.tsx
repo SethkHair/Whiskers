@@ -67,19 +67,22 @@ export default function UserProfileScreen({ route, navigation }: Props) {
     setFollowLoading(true);
 
     if (isFollowing) {
-      await supabase.from('follows').delete().eq('follower_id', currentUserId).eq('following_id', userId);
-      setIsFollowing(false);
-      setFollowerCount(c => c - 1);
+      const { error } = await supabase.from('follows').delete().eq('follower_id', currentUserId).eq('following_id', userId);
+      if (!error) {
+        setIsFollowing(false);
+        setFollowerCount(c => c - 1);
+      }
     } else {
-      await supabase.from('follows').insert({ follower_id: currentUserId, following_id: userId });
-      setIsFollowing(true);
-      setFollowerCount(c => c + 1);
-      // Notify the followed user
-      await supabase.from('notifications').insert({
-        user_id: userId,
-        actor_id: currentUserId,
-        type: 'follow',
-      });
+      const { error } = await supabase.from('follows').insert({ follower_id: currentUserId, following_id: userId });
+      if (!error) {
+        setIsFollowing(true);
+        setFollowerCount(c => c + 1);
+        await supabase.from('notifications').insert({
+          user_id: userId,
+          actor_id: currentUserId,
+          type: 'follow',
+        });
+      }
     }
     setFollowLoading(false);
   }

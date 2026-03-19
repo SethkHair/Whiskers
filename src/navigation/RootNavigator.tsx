@@ -19,6 +19,8 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import FollowListScreen from '../screens/FollowListScreen';
 import AdminDistilleryScreen from '../screens/AdminDistilleryScreen';
 import EditDistilleryScreen from '../screens/EditDistilleryScreen';
+import EditWhiskyScreen from '../screens/EditWhiskyScreen';
+import QuickLogScreen from '../screens/QuickLogScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const styles = StyleSheet.create({
@@ -63,6 +65,8 @@ export default function RootNavigator() {
           <Stack.Screen name="FollowList" component={FollowListScreen} options={{ title: '' }} />
           <Stack.Screen name="AdminDistillery" component={AdminDistilleryScreen} options={{ title: 'Distilleries' }} />
           <Stack.Screen name="EditDistillery" component={EditDistilleryScreen} options={{ title: 'Distillery' }} />
+          <Stack.Screen name="EditWhisky" component={EditWhiskyScreen} options={{ title: 'Edit Whisky' }} />
+          <Stack.Screen name="QuickLog" component={QuickLogScreen} options={{ title: 'Log a Dram', presentation: 'modal' }} />
         </>
       ) : (
         <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />

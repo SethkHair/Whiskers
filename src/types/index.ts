@@ -136,6 +136,8 @@ export type RootStackParamList = {
   FollowList: { userId: string; mode: 'followers' | 'following' };
   AdminDistillery: undefined;
   EditDistillery: { distilleryId?: string };
+  EditWhisky: { whiskyId: string };
+  QuickLog: undefined;
 };
 
 export type TabParamList = {
