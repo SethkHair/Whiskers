@@ -38,8 +38,9 @@ export default function HomeScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
-  const [followingOnly, setFollowingOnly] = useState(false);
+  const [feedTab, setFeedTab] = useState<'following' | 'all'>('following');
   const [followedIds, setFollowedIds] = useState<string[]>([]);
+  const [hasFollows, setHasFollows] = useState(false);
   const [error, setError] = useState(false);
 
   async function fetchTrending() {
@@ -75,18 +76,17 @@ export default function HomeScreen() {
 
     let ids: string[] = followedIds;
     if (!append) {
-      // Re-fetch followed IDs on first load/refresh
       if (myId) {
         const { data: follows } = await supabase
           .from('follows')
           .select('following_id')
           .eq('follower_id', myId);
-        ids = follows && follows.length > 0 ? [...follows.map(f => f.following_id), myId] : [];
+        ids = follows && follows.length > 0 ? [...follows.map(f => f.following_id), myId] : [myId];
         setFollowedIds(ids);
-        setFollowingOnly(ids.length > 1);
+        setHasFollows(follows ? follows.length > 0 : false);
       } else {
         ids = [];
-        setFollowingOnly(false);
+        setHasFollows(false);
       }
     }
 
@@ -96,7 +96,7 @@ export default function HomeScreen() {
       .order('created_at', { ascending: false })
       .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
 
-    if (ids.length > 0) query = query.in('user_id', ids);
+    if (feedTab === 'following' && ids.length > 0) query = query.in('user_id', ids);
 
     const { data, error: fetchError } = await query;
     if (fetchError) { setError(true); return; }
@@ -139,8 +139,10 @@ export default function HomeScreen() {
   }
 
   useEffect(() => {
+    setPage(0);
+    setHasMore(true);
     Promise.all([fetchCheckins(0, false), fetchTrending()]).finally(() => setLoading(false));
-  }, []);
+  }, [feedTab]);
 
   async function onRefresh() {
     setRefreshing(true);
@@ -190,7 +192,23 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>{followingOnly ? 'Following' : 'Activity'}</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.header}>Activity</Text>
+        <View style={styles.feedTabs}>
+          <TouchableOpacity
+            style={[styles.feedTab, feedTab === 'following' && styles.feedTabActive]}
+            onPress={() => setFeedTab('following')}
+          >
+            <Text style={[styles.feedTabText, feedTab === 'following' && styles.feedTabTextActive]}>Following</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.feedTab, feedTab === 'all' && styles.feedTabActive]}
+            onPress={() => setFeedTab('all')}
+          >
+            <Text style={[styles.feedTabText, feedTab === 'all' && styles.feedTabTextActive]}>All</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
       <FlatList
         data={checkins}
         keyExtractor={item => item.id}
@@ -220,7 +238,11 @@ export default function HomeScreen() {
         ) : null}
         ListEmptyComponent={
           <Text style={styles.empty}>
-            {followingOnly ? 'No activity from people you follow yet.' : 'No check-ins yet. Be the first!'}
+            {feedTab === 'following' && !hasFollows
+              ? 'Follow people to see their drams here.'
+              : feedTab === 'following'
+              ? 'No activity from people you follow yet.'
+              : 'No check-ins yet. Be the first!'}
           </Text>
         }
         renderItem={({ item }) => {

@@ -8,8 +8,12 @@ import {
   StyleSheet,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
 import { Whisky, Checkin, RootStackParamList } from '../types';
+
+type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 const STOP_WORDS = new Set(['with', 'hint', 'hints', 'notes', 'note', 'touch', 'slight', 'some', 'very', 'nice', 'good', 'great', 'little', 'light', 'rich', 'long', 'finish', 'palate', 'nose', 'this', 'that', 'from', 'have', 'been', 'more', 'also']);
 
@@ -34,6 +38,7 @@ import CollectionButton from '../components/CollectionButton';
 type Props = NativeStackScreenProps<RootStackParamList, 'WhiskyDetail'>;
 
 export default function WhiskyDetailScreen({ route, navigation }: Props) {
+  const nav = useNavigation<Nav>();
   const { whiskyId } = route.params;
   const [whisky, setWhisky] = useState<Whisky | null>(null);
   const [checkins, setCheckins] = useState<Checkin[]>([]);
@@ -148,7 +153,9 @@ export default function WhiskyDetailScreen({ route, navigation }: Props) {
           {checkins.map(c => (
             <View key={c.id} style={styles.checkinCard}>
               <View style={styles.checkinHeader}>
-                <Text style={styles.checkinUser}>@{c.profile?.username ?? 'unknown'}</Text>
+                <TouchableOpacity onPress={() => nav.navigate('UserProfile', { userId: c.user_id })}>
+                  <Text style={styles.checkinUser}>@{c.profile?.username ?? 'unknown'}</Text>
+                </TouchableOpacity>
                 <Text style={styles.checkinRating}>{'★'.repeat(c.rating)}{'☆'.repeat(5 - c.rating)}</Text>
               </View>
               {c.overall_notes && <Text style={styles.checkinNotes}>{c.overall_notes}</Text>}
