@@ -126,7 +126,7 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Main: undefined;
   WhiskyDetail: { whiskyId: string };
-  LogDram: { whiskyId: string; whiskyName: string };
+  LogDram: { whiskyId: string; whiskyName: string; checkinId?: string };
   SubmitWhisky: undefined;
   UserProfile: { userId: string };
   Distillery: { distillery: string; distilleryId?: string };

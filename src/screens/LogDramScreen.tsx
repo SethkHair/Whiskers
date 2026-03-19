@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'LogDram'>;
 const SERVING_OPTIONS: ServingType[] = ['neat', 'rocks', 'water', 'cocktail'];
 
 export default function LogDramScreen({ route, navigation }: Props) {
-  const { whiskyId, whiskyName } = route.params;
+  const { whiskyId, whiskyName, checkinId } = route.params;
+  const isEditing = !!checkinId;
   const [rating, setRating] = useState(3);
   const [serving, setServing] = useState<ServingType>('neat');
   const [nose, setNose] = useState('');
@@ -30,6 +31,20 @@ export default function LogDramScreen({ route, navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!checkinId) return;
+    supabase.from('checkins').select('*').eq('id', checkinId).single().then(({ data }) => {
+      if (!data) return;
+      setRating(data.rating);
+      setServing(data.serving_type);
+      setNose(data.nose ?? '');
+      setPalate(data.palate ?? '');
+      setFinish(data.finish ?? '');
+      setNotes(data.overall_notes ?? '');
+      setDate(data.date);
+    });
+  }, [checkinId]);
 
   async function submit() {
     setError(null);
@@ -49,9 +64,7 @@ export default function LogDramScreen({ route, navigation }: Props) {
         { onConflict: 'id', ignoreDuplicates: true }
       );
 
-      const { error: insertError } = await supabase.from('checkins').insert({
-        user_id: user.id,
-        whisky_id: whiskyId,
+      const payload = {
         rating,
         serving_type: serving,
         nose: nose || null,
@@ -59,19 +72,18 @@ export default function LogDramScreen({ route, navigation }: Props) {
         finish: finish || null,
         overall_notes: notes || null,
         date,
-      });
+      };
 
-      if (insertError) {
-        setError(insertError.message);
+      const { error: saveError } = isEditing
+        ? await supabase.from('checkins').update(payload).eq('id', checkinId!)
+        : await supabase.from('checkins').insert({ ...payload, user_id: user.id, whisky_id: whiskyId });
+
+      if (saveError) {
+        setError(saveError.message);
       } else {
-        const newBadges = await checkAndAwardBadges(user.id);
-        if (newBadges && newBadges.length > 0) {
-          setToast(`🏅 Badge unlocked: ${newBadges[0].name}!`);
-          setTimeout(() => navigation.goBack(), 2500);
-        } else {
-          setToast('Dram logged!');
-          setTimeout(() => navigation.goBack(), 1500);
-        }
+        if (!isEditing) await checkAndAwardBadges(user.id);
+        setToast(isEditing ? 'Dram updated!' : 'Dram logged!');
+        setTimeout(() => navigation.goBack(), 1500);
       }
     } catch (e: any) {
       setError(e.message ?? 'Something went wrong');
@@ -134,7 +146,7 @@ export default function LogDramScreen({ route, navigation }: Props) {
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
 
       <TouchableOpacity style={styles.submitBtn} onPress={submit} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Log Dram</Text>}
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>{isEditing ? 'Save Changes' : 'Log Dram'}</Text>}
       </TouchableOpacity>
     </ScrollView>
   );

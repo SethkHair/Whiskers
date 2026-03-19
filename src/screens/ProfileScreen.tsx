@@ -194,16 +194,27 @@ export default function ProfileScreen() {
                 <Text style={styles.meta}>{item.whisky?.distillery} · {new Date(item.date).toLocaleDateString()}</Text>
               </View>
               {confirmDeleteId === item.id ? (
-                <TouchableOpacity
-                  style={styles.deleteBtn}
-                  onPress={async () => {
-                    await supabase.from('checkins').delete().eq('id', item.id);
-                    setCheckins(c => c.filter(x => x.id !== item.id));
-                    setConfirmDeleteId(null);
-                  }}
-                >
-                  <Text style={styles.deleteBtnText}>Delete</Text>
-                </TouchableOpacity>
+                <View style={styles.actionBtns}>
+                  <TouchableOpacity
+                    style={styles.editBtn}
+                    onPress={() => {
+                      setConfirmDeleteId(null);
+                      navigation.navigate('LogDram', { whiskyId: item.whisky_id, whiskyName: item.whisky?.name ?? '', checkinId: item.id });
+                    }}
+                  >
+                    <Text style={styles.editBtnText}>Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.deleteBtn}
+                    onPress={async () => {
+                      await supabase.from('checkins').delete().eq('id', item.id);
+                      setCheckins(c => c.filter(x => x.id !== item.id));
+                      setConfirmDeleteId(null);
+                    }}
+                  >
+                    <Text style={styles.deleteBtnText}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
               ) : (
                 <Text style={styles.ratingText}>{'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}</Text>
               )}
@@ -271,6 +282,9 @@ const styles = StyleSheet.create({
   whiskyName: { color: '#f9fafb', fontSize: 15, fontWeight: '600' },
   meta: { color: '#9ca3af', fontSize: 12, marginTop: 2 },
   ratingText: { color: '#f59e0b', fontSize: 13 },
+  actionBtns: { flexDirection: 'row', gap: 8 },
+  editBtn: { backgroundColor: '#374151', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
+  editBtnText: { color: '#f9fafb', fontSize: 13, fontWeight: '600' },
   deleteBtn: { backgroundColor: '#dc2626', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
   deleteBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 });
