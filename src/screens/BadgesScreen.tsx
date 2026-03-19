@@ -10,6 +10,7 @@ type Stats = {
   bourbon_count: number;
   country_count: number;
   region_variety: number;
+  submitted_count: number;
 };
 
 function getProgress(badge: typeof BADGE_DEFINITIONS[number], stats: Stats): number {
@@ -19,13 +20,14 @@ function getProgress(badge: typeof BADGE_DEFINITIONS[number], stats: Stats): num
     case 'bourbon_count':  return stats.bourbon_count;
     case 'country_count':  return stats.country_count;
     case 'region_variety': return stats.region_variety;
+    case 'submitted_count': return stats.submitted_count;
     default: return 0;
   }
 }
 
 export default function BadgesScreen() {
   const [earned, setEarned] = useState<Set<string>>(new Set());
-  const [stats, setStats] = useState<Stats>({ checkin_count: 0, region_count: 0, bourbon_count: 0, country_count: 0, region_variety: 0 });
+  const [stats, setStats] = useState<Stats>({ checkin_count: 0, region_count: 0, bourbon_count: 0, country_count: 0, region_variety: 0, submitted_count: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

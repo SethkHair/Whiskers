@@ -18,6 +18,13 @@ export async function checkAndAwardBadges(userId: string) {
 
   const earnedIds = new Set((earned ?? []).map(b => b.badge_id));
 
+  // Fetch approved submission count
+  const { count: submittedCount } = await supabase
+    .from('whiskies')
+    .select('*', { count: 'exact', head: true })
+    .eq('submitted_by', userId)
+    .eq('status', 'approved');
+
   // Compute stats
   const checkinCount = checkins.length;
   const islayCount = checkins.filter(c => c.whisky?.region === 'Islay').length;
@@ -31,6 +38,7 @@ export async function checkAndAwardBadges(userId: string) {
     bourbon_count: bourbonCount,
     country_count: uniqueCountries,
     region_variety: uniqueRegions,
+    submitted_count: submittedCount ?? 0,
   };
 
   // Award any newly earned badges
