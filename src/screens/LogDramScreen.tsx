@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase';
 import { checkAndAwardBadges } from '../lib/checkBadges';
 import { RootStackParamList, ServingType } from '../types';
 import Toast from '../components/Toast';
+import FlavorWheel from '../components/FlavorWheel';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LogDram'>;
 
@@ -27,6 +28,7 @@ export default function LogDramScreen({ route, navigation }: Props) {
   const [palate, setPalate] = useState('');
   const [finish, setFinish] = useState('');
   const [notes, setNotes] = useState('');
+  const [flavorTags, setFlavorTags] = useState<string[]>([]);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +44,7 @@ export default function LogDramScreen({ route, navigation }: Props) {
       setPalate(data.palate ?? '');
       setFinish(data.finish ?? '');
       setNotes(data.overall_notes ?? '');
+      setFlavorTags(data.flavor_tags ?? []);
       setDate(data.date);
     });
   }, [checkinId]);
@@ -71,6 +74,7 @@ export default function LogDramScreen({ route, navigation }: Props) {
         palate: palate || null,
         finish: finish || null,
         overall_notes: notes || null,
+        flavor_tags: flavorTags,
         date,
       };
 
@@ -132,6 +136,14 @@ export default function LogDramScreen({ route, navigation }: Props) {
       <Text style={styles.label}>Overall notes</Text>
       <TextInput style={[styles.input, styles.inputTall]} placeholder="Any other thoughts?" placeholderTextColor="#6b7280" value={notes} onChangeText={setNotes} multiline />
 
+      <Text style={styles.label}>Flavor Profile</Text>
+      <Text style={styles.flavorHint}>What flavors do you taste? Tap a category to pick.</Text>
+      <FlavorWheel
+        selected={flavorTags}
+        onToggle={tag => setFlavorTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])}
+      />
+      <View style={styles.flavorSpacer} />
+
       <Text style={styles.label}>Date</Text>
       <TextInput
         style={styles.input}
@@ -177,6 +189,8 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   inputTall: { minHeight: 80 },
+  flavorHint: { color: '#6b7280', fontSize: 12, marginBottom: 10, marginTop: -4 },
+  flavorSpacer: { height: 24 },
   error: { color: '#f87171', fontSize: 14, marginBottom: 12, textAlign: 'center' },
   submitBtn: { backgroundColor: '#b45309', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
   submitText: { color: '#fff', fontSize: 16, fontWeight: '600' },

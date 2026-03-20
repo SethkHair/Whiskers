@@ -55,6 +55,7 @@ export interface Checkin {
   finish: string | null;
   overall_notes: string | null;
   serving_type: ServingType;
+  flavor_tags: string[];
   date: string;
   created_at: string;
   whisky?: Whisky;

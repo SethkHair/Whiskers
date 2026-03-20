@@ -34,6 +34,8 @@ function topWords(texts: (string | null)[], n = 5): string[] {
 }
 import { timeAgo } from '../lib/utils';
 import CollectionButton from '../components/CollectionButton';
+import FlavorRadar from '../components/FlavorRadar';
+import { FLAVOR_CATEGORIES } from '../constants/badges';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WhiskyDetail'>;
 
@@ -116,15 +118,33 @@ export default function WhiskyDetailScreen({ route, navigation }: Props) {
         );
       })()}
 
-      {whisky.flavor_tags?.length > 0 && (
-        <View style={styles.flavorRow}>
-          {whisky.flavor_tags.map(tag => (
-            <View key={tag} style={styles.flavorTag}>
-              <Text style={styles.flavorTagText}>{tag}</Text>
+      {(() => {
+        const taggedCheckins = checkins.filter(c => c.flavor_tags?.length > 0);
+        if (taggedCheckins.length >= 3) {
+          const scores = FLAVOR_CATEGORIES.map(cat =>
+            taggedCheckins.filter(c => c.flavor_tags.some(t => (cat.tags as readonly string[]).includes(t))).length / taggedCheckins.length
+          );
+          return (
+            <View style={styles.radarCard}>
+              <Text style={styles.sectionTitle}>Community Flavor Radar</Text>
+              <FlavorRadar scores={scores} checkinCount={taggedCheckins.length} />
             </View>
-          ))}
-        </View>
-      )}
+          );
+        }
+        // Fallback: show whisky-level flavor tags if no community data yet
+        if (whisky.flavor_tags?.length > 0) {
+          return (
+            <View style={styles.flavorRow}>
+              {whisky.flavor_tags.map(tag => (
+                <View key={tag} style={styles.flavorTag}>
+                  <Text style={styles.flavorTagText}>{tag}</Text>
+                </View>
+              ))}
+            </View>
+          );
+        }
+        return null;
+      })()}
 
       {whisky.description && <Text style={styles.description}>{whisky.description}</Text>}
 
@@ -238,6 +258,7 @@ const styles = StyleSheet.create({
   distBarBg: { flex: 1, height: 6, backgroundColor: '#1f2937', borderRadius: 3, overflow: 'hidden' },
   distBarFill: { height: 6, backgroundColor: '#b45309', borderRadius: 3 },
   distCount: { color: '#6b7280', fontSize: 11, width: 16, textAlign: 'right' },
+  radarCard: { marginBottom: 24 },
   flavorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 16 },
   flavorTag: { backgroundColor: '#1f2937', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: '#374151' },
   flavorTagText: { color: '#d1d5db', fontSize: 12 },
