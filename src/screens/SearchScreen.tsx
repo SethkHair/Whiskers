@@ -14,7 +14,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Fuse from 'fuse.js';
 import { supabase } from '../lib/supabase';
 import { Whisky, Profile, WhiskyType, RootStackParamList } from '../types';
-import { WHISKY_COUNTRIES, COUNTRY_REGIONS, FLAVOR_TAGS } from '../constants/badges';
+import { WHISKY_COUNTRIES, COUNTRY_REGIONS } from '../constants/badges';
+import FlavorWheel from '../components/FlavorWheel';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Tab = 'whiskies' | 'people';
@@ -186,17 +187,7 @@ export default function SearchScreen() {
 
           <View style={styles.filterRow}>
             <Text style={styles.filterLabel}>Flavor Profile</Text>
-            <View style={styles.flavorWrap}>
-              {FLAVOR_TAGS.map(tag => (
-                <TouchableOpacity
-                  key={tag}
-                  style={[styles.chip, filterFlavors.includes(tag) && styles.chipActive]}
-                  onPress={() => toggleFlavorFilter(tag)}
-                >
-                  <Text style={[styles.chipText, filterFlavors.includes(tag) && styles.chipTextActive]}>{tag}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <FlavorWheel selected={filterFlavors} onToggle={toggleFlavorFilter} />
           </View>
 
           {activeFilterCount > 0 && (
@@ -295,7 +286,6 @@ const styles = StyleSheet.create({
   filterRow: { marginBottom: 10 },
   filterLabel: { color: '#6b7280', fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
   chipRow: { gap: 6 },
-  flavorWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: '#374151', backgroundColor: '#111827' },
   chipActive: { backgroundColor: '#b45309', borderColor: '#b45309' },
   chipText: { color: '#9ca3af', fontSize: 12 },

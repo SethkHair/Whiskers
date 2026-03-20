@@ -291,20 +291,16 @@ export const WHISKY_COUNTRIES = [
 
 import { WhiskyType } from '../types';
 
-export const FLAVOR_TAGS = [
-  // Smoke & Peat
-  'Peaty', 'Smoky', 'Medicinal', 'Briny',
-  // Sweet
-  'Sweet', 'Vanilla', 'Caramel', 'Honey', 'Chocolate', 'Toffee',
-  // Fruit
-  'Fruity', 'Citrus', 'Apple / Pear', 'Stone Fruit', 'Dried Fruit', 'Tropical',
-  // Spice
-  'Spicy', 'Peppery', 'Cinnamon', 'Ginger',
-  // Earthy / Woody
-  'Woody / Oak', 'Nutty', 'Grainy', 'Herbal', 'Floral',
-  // Rich
-  'Sherry', 'Creamy', 'Buttery',
-];
+export const FLAVOR_CATEGORIES = [
+  { id: 'smoke',  label: 'Smoke & Peat', emoji: '💨', color: '#374151', tags: ['Peaty', 'Smoky', 'Medicinal', 'Briny'] },
+  { id: 'sweet',  label: 'Sweet',        emoji: '🍯', color: '#92400e', tags: ['Sweet', 'Vanilla', 'Caramel', 'Honey', 'Chocolate', 'Toffee'] },
+  { id: 'fruit',  label: 'Fruit',        emoji: '🍎', color: '#14532d', tags: ['Fruity', 'Citrus', 'Apple / Pear', 'Stone Fruit', 'Dried Fruit', 'Tropical'] },
+  { id: 'spice',  label: 'Spice',        emoji: '🌶️', color: '#7f1d1d', tags: ['Spicy', 'Peppery', 'Cinnamon', 'Ginger'] },
+  { id: 'earthy', label: 'Earthy',       emoji: '🌳', color: '#1c3a1c', tags: ['Woody / Oak', 'Nutty', 'Grainy', 'Herbal', 'Floral'] },
+  { id: 'rich',   label: 'Rich',         emoji: '🍷', color: '#3b0764', tags: ['Sherry', 'Creamy', 'Buttery'] },
+] as const;
+
+export const FLAVOR_TAGS = FLAVOR_CATEGORIES.flatMap(c => c.tags);
 
 export const COUNTRY_TYPES: Record<string, WhiskyType[]> = {
   Scotland:  ['single_malt', 'blended'],
