@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Flavor Radar Preview</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #111827;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex;
+      justify-content: center;
+      padding: 40px 20px;
+      gap: 40px;
+      flex-wrap: wrap;
+    }
+
+    /* ── Phone shell ── */
+    .phone {
+      width: 375px;
+      background: #111827;
+      border-radius: 44px;
+      border: 8px solid #1f2937;
+      box-shadow: 0 0 0 2px #374151, 0 32px 64px rgba(0,0,0,.6);
+      overflow: hidden;
+      padding-bottom: 32px;
+    }
+    .notch {
+      background: #000;
+      height: 32px;
+      border-radius: 0 0 18px 18px;
+      width: 130px;
+      margin: 0 auto 0;
+    }
+    .screen { padding: 16px 20px; }
+
+    /* ── Whisky detail bits ── */
+    .whisky-name { font-size: 22px; font-weight: 700; color: #f9fafb; margin-bottom: 2px; }
+    .distillery  { font-size: 14px; color: #9ca3af; margin-bottom: 14px; }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .tag {
+      background: #1f2937; border: 1px solid #374151; border-radius: 8px;
+      padding: 3px 10px; font-size: 11px; color: #d1d5db; text-transform: capitalize;
+    }
+    .rating-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 16px; }
+    .rating-num  { font-size: 30px; font-weight: 700; color: #f59e0b; }
+    .rating-sub  { font-size: 13px; color: #6b7280; }
+
+    /* ── Radar card ── */
+    .radar-card  { margin-bottom: 24px; }
+    .section-title {
+      font-size: 11px; font-weight: 600; color: #6b7280;
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px;
+    }
+
+    /* ── Legend bars ── */
+    .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .bar-emoji { font-size: 13px; width: 18px; }
+    .bar-track { flex: 1; height: 4px; background: #1f2937; border-radius: 2px; overflow: hidden; }
+    .bar-fill  { height: 4px; border-radius: 2px; }
+    .bar-pct   { font-size: 11px; color: #6b7280; width: 30px; text-align: right; }
+    .radar-caption { font-size: 11px; color: #4b5563; text-align: center; margin-top: 8px; }
+
+    .divider { border: none; border-top: 1px solid #1f2937; margin: 16px 0; }
+
+    .log-btn {
+      background: #b45309; border-radius: 12px; padding: 14px;
+      text-align: center; color: #fff; font-size: 15px; font-weight: 600;
+      margin-top: 4px; margin-bottom: 20px;
+    }
+
+    /* annotation */
+    .annotation-wrap { position: relative; }
+    .callout {
+      position: absolute;
+      background: #f59e0b;
+      color: #111827;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 8px;
+      white-space: nowrap;
+    }
+    .callout::after {
+      content: '';
+      position: absolute;
+      border: 6px solid transparent;
+    }
+    .callout.left { right: calc(100% + 12px); top: 50%; transform: translateY(-50%); }
+    .callout.left::after { border-left-color: #f59e0b; left: 100%; top: 50%; transform: translateY(-50%); }
+  </style>
+</head>
+<body>
+
+<!-- ── PHONE 1: Whisky Detail with radar ── -->
+<div>
+  <p style="color:#9ca3af;font-size:13px;text-align:center;margin-bottom:12px">WhiskyDetailScreen</p>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen">
+      <div class="whisky-name">Ardbeg 10 Year Old</div>
+      <div class="distillery">Ardbeg Distillery ›</div>
+      <div class="tags">
+        <span class="tag">Scotland</span>
+        <span class="tag">Islay</span>
+        <span class="tag">Single Malt</span>
+        <span class="tag">10 yr</span>
+        <span class="tag">46% ABV</span>
+      </div>
+      <div class="rating-row">
+        <span class="rating-num">4.6</span>
+        <span class="rating-sub">avg · 24 drams</span>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- RADAR SECTION -->
+      <div class="radar-card annotation-wrap">
+        <div class="section-title">Community Flavor Radar</div>
+
+        <svg width="100%" viewBox="0 0 260 260" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="2" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <!-- Grid rings -->
+          <circle cx="130" cy="130" r="27" fill="none" stroke="#374151" stroke-width="1"/>
+          <circle cx="130" cy="130" r="54" fill="none" stroke="#374151" stroke-width="1"/>
+          <circle cx="130" cy="130" r="82" fill="none" stroke="#374151" stroke-width="1"/>
+
+          <!-- Axis spokes (6 axes at 60° increments, starting top = -90°) -->
+          <!-- 0°  top    (-90°): angle = -90  → cos=-0  sin=-1  → (130, 48) -->
+          <!-- 60° (+60°) = -30° → cos=0.866 sin=-0.5 → (201, 89) -->
+          <!-- 120°(+120°)= 30° → cos=0.866 sin=0.5  → (201, 171) -->
+          <!-- 180°(+180°)= 90° → cos=0     sin=1    → (130, 212) -->
+          <!-- 240°(+240°)=150° → cos=-0.866 sin=0.5 → (59,  171) -->
+          <!-- 300°(+300°)=210° → cos=-0.866 sin=-0.5→ (59,  89)  -->
+          <line x1="130" y1="130" x2="130" y2="48"  stroke="#374151" stroke-width="1"/>
+          <line x1="130" y1="130" x2="201" y2="89"  stroke="#374151" stroke-width="1"/>
+          <line x1="130" y1="130" x2="201" y2="171" stroke="#374151" stroke-width="1"/>
+          <line x1="130" y1="130" x2="130" y2="212" stroke="#374151" stroke-width="1"/>
+          <line x1="130" y1="130" x2="59"  y2="171" stroke="#374151" stroke-width="1"/>
+          <line x1="130" y1="130" x2="59"  y2="89"  stroke="#374151" stroke-width="1"/>
+
+          <!--
+            Scores (example Ardbeg-style profile):
+            Smoke 0.92, Sweet 0.45, Fruit 0.30, Spice 0.60, Earthy 0.50, Rich 0.25
+            endpoint = center + score * 82 along each axis
+          -->
+
+          <!-- Filled polygon (community average shape) -->
+          <!--
+            Smoke  (top,   score=0.92): 130, 130 - 0.92*82 = 130, 54.6
+            Sweet  (-30°,  score=0.45): 130 + 0.45*82*cos(-30°), 130 + 0.45*82*sin(-30°)
+                                        = 130+31.95, 130-18.45 = 161.95, 111.55
+            Fruit  (30°,   score=0.30): 130+0.30*82*0.866, 130+0.30*82*0.5
+                                        = 130+21.3, 130+12.3 = 151.3, 142.3
+            Spice  (bottom,score=0.60): 130, 130+0.60*82 = 130, 179.2
+            Earthy (210°,  score=0.50): 130-0.50*82*0.866, 130+0.50*82*0.5
+                                        = 130-35.5, 130+20.5 = 94.5, 150.5
+            Rich   (150°,  score=0.25): 130-0.25*82*0.866, 130-0.25*82*0.5
+                                        = 130-17.7, 130-10.25 = 112.3, 119.75
+          -->
+          <polygon
+            points="130,54.6 161.95,111.55 151.3,142.3 130,179.2 94.5,150.5 112.3,119.75"
+            fill="#b45309"
+            fill-opacity="0.18"
+            stroke="#b45309"
+            stroke-width="1.5"
+            stroke-linejoin="round"
+          />
+
+          <!-- Colored needles with filter -->
+          <!-- Smoke (gray/dark) -->
+          <line x1="130" y1="130" x2="130" y2="54.6" stroke="#6b7280" stroke-width="3" stroke-linecap="round" filter="url(#glow)"/>
+          <!-- Sweet (amber) -->
+          <line x1="130" y1="130" x2="161.95" y2="111.55" stroke="#92400e" stroke-width="3" stroke-linecap="round" filter="url(#glow)"/>
+          <!-- Fruit (green) -->
+          <line x1="130" y1="130" x2="151.3" y2="142.3" stroke="#14532d" stroke-width="3" stroke-linecap="round" filter="url(#glow)"/>
+          <!-- Spice (red) -->
+          <line x1="130" y1="130" x2="130" y2="179.2" stroke="#7f1d1d" stroke-width="3" stroke-linecap="round" filter="url(#glow)"/>
+          <!-- Earthy (dark green) -->
+          <line x1="130" y1="130" x2="94.5" y2="150.5" stroke="#1c3a1c" stroke-width="3" stroke-linecap="round" filter="url(#glow)"/>
+          <!-- Rich (purple) -->
+          <line x1="130" y1="130" x2="112.3" y2="119.75" stroke="#3b0764" stroke-width="3" stroke-linecap="round" filter="url(#glow)"/>
+
+          <!-- Center dot -->
+          <circle cx="130" cy="130" r="4" fill="#f59e0b"/>
+
+          <!-- Endpoint dots -->
+          <circle cx="130"    cy="54.6"   r="5" fill="#6b7280"  stroke="#f9fafb" stroke-width="2"/>
+          <circle cx="161.95" cy="111.55" r="5" fill="#92400e"  stroke="#f9fafb" stroke-width="2"/>
+          <circle cx="151.3"  cy="142.3"  r="5" fill="#14532d"  stroke="#f9fafb" stroke-width="2"/>
+          <circle cx="130"    cy="179.2"  r="5" fill="#7f1d1d"  stroke="#f9fafb" stroke-width="2"/>
+          <circle cx="94.5"   cy="150.5"  r="5" fill="#1c3a1c"  stroke="#f9fafb" stroke-width="2"/>
+          <circle cx="112.3"  cy="119.75" r="5" fill="#3b0764"  stroke="#f9fafb" stroke-width="2"/>
+
+          <!-- Labels -->
+          <text x="130"  y="38"  text-anchor="middle" fill="#9ca3af" font-size="10" font-weight="600">💨 Smoke</text>
+          <text x="215"  y="88"  text-anchor="start"  fill="#9ca3af" font-size="10" font-weight="600">🍯 Sweet</text>
+          <text x="215"  y="182" text-anchor="start"  fill="#9ca3af" font-size="10" font-weight="600">🍎 Fruit</text>
+          <text x="130"  y="228" text-anchor="middle" fill="#9ca3af" font-size="10" font-weight="600">🌶️ Spice</text>
+          <text x="45"   y="182" text-anchor="end"    fill="#9ca3af" font-size="10" font-weight="600">🌳 Earthy</text>
+          <text x="45"   y="88"  text-anchor="end"    fill="#9ca3af" font-size="10" font-weight="600">🍷 Rich</text>
+        </svg>
+
+        <!-- Bar legend -->
+        <div class="bar-row"><span class="bar-emoji">💨</span><div class="bar-track"><div class="bar-fill" style="width:92%;background:#6b7280"></div></div><span class="bar-pct">92%</span></div>
+        <div class="bar-row"><span class="bar-emoji">🍯</span><div class="bar-track"><div class="bar-fill" style="width:45%;background:#92400e"></div></div><span class="bar-pct">45%</span></div>
+        <div class="bar-row"><span class="bar-emoji">🍎</span><div class="bar-track"><div class="bar-fill" style="width:30%;background:#14532d"></div></div><span class="bar-pct">30%</span></div>
+        <div class="bar-row"><span class="bar-emoji">🌶️</span><div class="bar-track"><div class="bar-fill" style="width:60%;background:#7f1d1d"></div></div><span class="bar-pct">60%</span></div>
+        <div class="bar-row"><span class="bar-emoji">🌳</span><div class="bar-track"><div class="bar-fill" style="width:50%;background:#1c3a1c"></div></div><span class="bar-pct">50%</span></div>
+        <div class="bar-row"><span class="bar-emoji">🍷</span><div class="bar-track"><div class="bar-fill" style="width:25%;background:#3b0764"></div></div><span class="bar-pct">25%</span></div>
+        <div class="radar-caption">Based on 14 drams with flavor notes</div>
+      </div>
+
+      <div class="log-btn">🥃 Log a Dram</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PHONE 2: Log a Dram with flavor wheel ── -->
+<div>
+  <p style="color:#9ca3af;font-size:13px;text-align:center;margin-bottom:12px">LogDramScreen — flavor picker</p>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen">
+      <div class="whisky-name" style="font-size:18px;margin-bottom:20px">Ardbeg 10 Year Old</div>
+
+      <div class="section-title">Flavor Profile</div>
+      <div style="color:#6b7280;font-size:12px;margin-bottom:10px;margin-top:-4px">What flavors do you taste? Tap a category to pick.</div>
+
+      <!-- 2×3 category grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:0">
+        <!-- Smoke — active/open -->
+        <div style="background:#374151;border-radius:12px;padding:12px 8px;text-align:center;position:relative;border:2px solid #f9fafb">
+          <div style="font-size:20px;margin-bottom:4px">💨</div>
+          <div style="color:#f9fafb;font-size:10px;font-weight:600">Smoke & Peat</div>
+          <div style="position:absolute;top:5px;right:5px;background:#b45309;border-radius:8px;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:700">2</div>
+        </div>
+        <!-- Sweet -->
+        <div style="background:#92400e;border-radius:12px;padding:12px 8px;text-align:center">
+          <div style="font-size:20px;margin-bottom:4px">🍯</div>
+          <div style="color:#f9fafb;font-size:10px;font-weight:600">Sweet</div>
+        </div>
+        <!-- Fruit -->
+        <div style="background:#14532d;border-radius:12px;padding:12px 8px;text-align:center">
+          <div style="font-size:20px;margin-bottom:4px">🍎</div>
+          <div style="color:#f9fafb;font-size:10px;font-weight:600">Fruit</div>
+        </div>
+        <!-- Spice -->
+        <div style="background:#7f1d1d;border-radius:12px;padding:12px 8px;text-align:center">
+          <div style="font-size:20px;margin-bottom:4px">🌶️</div>
+          <div style="color:#f9fafb;font-size:10px;font-weight:600">Spice</div>
+        </div>
+        <!-- Earthy -->
+        <div style="background:#1c3a1c;border-radius:12px;padding:12px 8px;text-align:center">
+          <div style="font-size:20px;margin-bottom:4px">🌳</div>
+          <div style="color:#f9fafb;font-size:10px;font-weight:600">Earthy</div>
+        </div>
+        <!-- Rich -->
+        <div style="background:#3b0764;border-radius:12px;padding:12px 8px;text-align:center">
+          <div style="font-size:20px;margin-bottom:4px">🍷</div>
+          <div style="color:#f9fafb;font-size:10px;font-weight:600">Rich</div>
+        </div>
+      </div>
+
+      <!-- Expanded panel for Smoke category -->
+      <div style="margin-top:8px;background:#111827;border-radius:12px;border:2px solid #374151;padding:12px">
+        <div style="color:#f9fafb;font-size:13px;font-weight:700;margin-bottom:10px">💨 Smoke & Peat</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="background:#374151;border:1px solid #374151;border-radius:16px;padding:5px 12px;color:#fff;font-size:12px;font-weight:600">Peaty</span>
+          <span style="background:#374151;border:1px solid #374151;border-radius:16px;padding:5px 12px;color:#fff;font-size:12px;font-weight:600">Smoky</span>
+          <span style="background:#1f2937;border:1px solid #374151;border-radius:16px;padding:5px 12px;color:#9ca3af;font-size:12px">Medicinal</span>
+          <span style="background:#1f2937;border:1px solid #374151;border-radius:16px;padding:5px 12px;color:#9ca3af;font-size:12px">Briny</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
